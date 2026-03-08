@@ -47,12 +47,13 @@ export default function Dashboard() {
     const vp = calcValuationPrices(stock.eps, stock.peHigh, stock.peMid, stock.peLow)
 
     // Sell signal: high valuation
+    const sellPointHint = stock.conditionPrice2 ? `，卖点 ${stock.conditionPrice2}` : '，未设置卖点'
     if (currentPrice >= vp.high.p1) {
       const pct = ((currentPrice - vp.high.p1) / vp.high.p1 * 100)
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估合理价 ${vp.high.p1}，超过 ${pct.toFixed(1)}%`, category: 'sell', excessPct: pct })
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估合理价 ${vp.high.p1}，超过 ${pct.toFixed(1)}%${sellPointHint}`, category: 'sell', excessPct: pct })
     } else if (currentPrice >= vp.high.p2) {
       const pct = ((currentPrice - vp.high.p2) / vp.high.p2 * 100)
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估打折价 ${vp.high.p2}，超过 ${pct.toFixed(1)}%`, category: 'sell', excessPct: pct })
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估打折价 ${vp.high.p2}，超过 ${pct.toFixed(1)}%${sellPointHint}`, category: 'sell', excessPct: pct })
     }
 
     // Buy signal: low valuation
@@ -70,9 +71,10 @@ export default function Dashboard() {
     const target = TIER_PCT[pos.stock.tier]
     if (pos.positionPct > target + 1) {
       const pct = pos.positionPct - target
+      const owSellHint = pos.stock.conditionPrice2 ? `，卖点 ${pos.stock.conditionPrice2}` : '，未设置卖点'
       alerts.push({
         name: pos.stock.name,
-        message: `当前仓位 ${pos.positionPct.toFixed(1)}% 超过目标 ${target}%，超出 ${pct.toFixed(1)}%`,
+        message: `当前仓位 ${pos.positionPct.toFixed(1)}% 超过目标 ${target}%，超出 ${pct.toFixed(1)}%${owSellHint}`,
         category: 'overweight',
         excessPct: pct,
       })
