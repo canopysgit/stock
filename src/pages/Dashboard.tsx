@@ -79,8 +79,13 @@ export default function Dashboard() {
     }
   }
 
-  // Sort alerts: within each category, higher excessPct first
-  alerts.sort((a, b) => b.excessPct - a.excessPct)
+  // Sort alerts: group by category order, then by excessPct desc within each group
+  const categoryOrder: Record<string, number> = { condition: 0, sell: 1, buy: 2, overweight: 3 }
+  alerts.sort((a, b) => {
+    const catDiff = (categoryOrder[a.category] ?? 9) - (categoryOrder[b.category] ?? 9)
+    if (catDiff !== 0) return catDiff
+    return b.excessPct - a.excessPct
+  })
 
   const filteredAlerts = alertFilter === 'all' ? alerts : alerts.filter((a) => a.category === alertFilter)
 
