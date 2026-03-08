@@ -5,7 +5,7 @@ import PnlText from '../components/common/PnlText'
 import { TrendingUp, TrendingDown, Briefcase, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 
 type AlertCategory = 'all' | 'condition' | 'sell' | 'buy' | 'overweight'
-type AlertItem = { name: string; message: string; category: AlertCategory }
+type AlertItem = { name: string; message: string; category: AlertCategory; excessPct: number }
 
 const categoryLabels: Record<Exclude<AlertCategory, 'all'>, string> = {
   condition: '条件单买卖点',
@@ -35,10 +35,12 @@ export default function Dashboard() {
 
     // Condition price alerts (条件单买卖点)
     if (stock.conditionPrice1 && currentPrice <= stock.conditionPrice1) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达条件单1买入价 ${stock.conditionPrice1}`, category: 'condition' })
+      const pct = ((stock.conditionPrice1 - currentPrice) / currentPrice * 100)
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达条件单1买入价 ${stock.conditionPrice1}，低于 ${pct.toFixed(1)}%`, category: 'condition', excessPct: pct })
     }
     if (stock.conditionPrice2 && currentPrice >= stock.conditionPrice2) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达条件单2卖出价 ${stock.conditionPrice2}`, category: 'condition' })
+      const pct = ((currentPrice - stock.conditionPrice2) / stock.conditionPrice2 * 100)
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达条件单2卖出价 ${stock.conditionPrice2}，超过 ${pct.toFixed(1)}%`, category: 'condition', excessPct: pct })
     }
 
     if (!stock.eps || !stock.peHigh || !stock.peMid || !stock.peLow) continue
@@ -46,16 +48,20 @@ export default function Dashboard() {
 
     // Sell signal: high valuation
     if (currentPrice >= vp.high.p1) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估合理价 ${vp.high.p1}`, category: 'sell' })
+      const pct = ((currentPrice - vp.high.p1) / vp.high.p1 * 100)
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估合理价 ${vp.high.p1}，超过 ${pct.toFixed(1)}%`, category: 'sell', excessPct: pct })
     } else if (currentPrice >= vp.high.p2) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估打折价 ${vp.high.p2}`, category: 'sell' })
+      const pct = ((currentPrice - vp.high.p2) / vp.high.p2 * 100)
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估打折价 ${vp.high.p2}，超过 ${pct.toFixed(1)}%`, category: 'sell', excessPct: pct })
     }
 
     // Buy signal: low valuation
     if (currentPrice <= vp.low.p3) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于低估低吸价 ${vp.low.p3}`, category: 'buy' })
+      const pct = ((vp.low.p3 - currentPrice) / currentPrice * 100)
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于低估低吸价 ${vp.low.p3}，低于 ${pct.toFixed(1)}%`, category: 'buy', excessPct: pct })
     } else if (currentPrice <= vp.mid.p3) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于中估低吸价 ${vp.mid.p3}`, category: 'buy' })
+      const pct = ((vp.mid.p3 - currentPrice) / currentPrice * 100)
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于中估低吸价 ${vp.mid.p3}，低于 ${pct.toFixed(1)}%`, category: 'buy', excessPct: pct })
     }
   }
 
@@ -63,13 +69,18 @@ export default function Dashboard() {
   for (const pos of positions) {
     const target = TIER_PCT[pos.stock.tier]
     if (pos.positionPct > target + 1) {
+      const pct = pos.positionPct - target
       alerts.push({
         name: pos.stock.name,
-        message: `当前仓位 ${pos.positionPct.toFixed(1)}% 超过目标 ${target}%`,
+        message: `当前仓位 ${pos.positionPct.toFixed(1)}% 超过目标 ${target}%，超出 ${pct.toFixed(1)}%`,
         category: 'overweight',
+        excessPct: pct,
       })
     }
   }
+
+  // Sort alerts: within each category, higher excessPct first
+  alerts.sort((a, b) => b.excessPct - a.excessPct)
 
   const filteredAlerts = alertFilter === 'all' ? alerts : alerts.filter((a) => a.category === alertFilter)
 
