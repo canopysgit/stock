@@ -165,7 +165,7 @@ export default function Portfolio() {
               <label className="block text-xs text-text-muted mb-1">目标均价</label>
               <input
                 type="number"
-                step="0.01"
+                step="0.001"
                 value={targetAvgCost}
                 onChange={(e) => setTargetAvgCost(e.target.value)}
                 placeholder="输入正确的均价"
@@ -174,7 +174,7 @@ export default function Portfolio() {
             </div>
             {targetAvgCost && !isNaN(parseFloat(targetAvgCost)) && (
               <div className="text-sm text-text-secondary space-y-1">
-                <div>调整后均价: <span className="font-mono text-text-primary">{parseFloat(targetAvgCost).toFixed(2)}</span></div>
+                <div>调整后均价: <span className="font-mono text-text-primary">{parseFloat(targetAvgCost).toFixed(3)}</span></div>
                 <div>调整后总成本: <span className="font-mono text-text-primary">¥{(parseFloat(targetAvgCost) * adjustModal.totalQty).toLocaleString()}</span></div>
                 <div>每股调整: <span className="font-mono text-text-primary">{(parseFloat(targetAvgCost) - adjustModal.avgCost) > 0 ? '+' : ''}{(parseFloat(targetAvgCost) - adjustModal.avgCost).toFixed(3)}</span></div>
               </div>
