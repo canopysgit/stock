@@ -179,7 +179,7 @@ export default function Dashboard() {
                       title={`目标: ${pos.targetPct}%`}
                     />
                   </div>
-                  <span className="w-20 text-right text-sm">
+                  <span className="w-28 text-right text-sm whitespace-nowrap">
                     <span className="text-text-primary">{pos.positionPct.toFixed(1)}%</span>
                     <span className="text-text-muted"> / {pos.targetPct}%</span>
                   </span>
@@ -194,7 +194,7 @@ export default function Dashboard() {
                       style={{ width: `${(settings.cashBalance / totalCapital) * 100}%` }}
                     />
                   </div>
-                  <span className="w-20 text-right text-sm text-text-muted">
+                  <span className="w-28 text-right text-sm whitespace-nowrap text-text-muted">
                     {((settings.cashBalance / totalCapital) * 100).toFixed(1)}%
                   </span>
                 </div>
