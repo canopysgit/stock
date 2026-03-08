@@ -94,7 +94,7 @@ export default function Portfolio() {
             </thead>
             <tbody>
               {displayPositions.map((pos) => (
-                <PositionRow key={pos.stock.id} pos={pos} totalCapital={portfolioStats.totalCapital} expanded={expanded.has(pos.stock.id)} onToggle={() => toggle(pos.stock.id)} onAdjust={() => openAdjust(pos)} />
+                <PositionRow key={pos.stock.id} pos={pos} totalMarketValue={portfolioStats.totalMarketValue} totalCapital={portfolioStats.totalCapital} expanded={expanded.has(pos.stock.id)} onToggle={() => toggle(pos.stock.id)} onAdjust={() => openAdjust(pos)} />
               ))}
             </tbody>
             <tfoot>
@@ -207,7 +207,7 @@ export default function Portfolio() {
   )
 }
 
-function PositionRow({ pos, totalCapital, expanded, onToggle, onAdjust }: { pos: PositionSummary; totalCapital: number; expanded: boolean; onToggle: () => void; onAdjust: () => void }) {
+function PositionRow({ pos, totalMarketValue, totalCapital, expanded, onToggle, onAdjust }: { pos: PositionSummary; totalMarketValue: number; totalCapital: number; expanded: boolean; onToggle: () => void; onAdjust: () => void }) {
   const { prices } = useData()
   const currentPrice = prices[pos.stock.code] || pos.marketPrice
   const tierLabel = pos.stock.tier === 'core' ? '核心' : pos.stock.tier === 'high' ? '高' : pos.stock.tier === 'mid' ? '中' : '低'
@@ -242,11 +242,11 @@ function PositionRow({ pos, totalCapital, expanded, onToggle, onAdjust }: { pos:
           <PnlText value={pos.floatingPnlPct} suffix="%" className="text-xs" />
         </td>
         <td className="text-right px-4 py-3">
-          <span className="font-mono">{pos.positionPct.toFixed(1)}%</span>
+          <span className="font-mono">{totalMarketValue > 0 ? ((pos.marketValue / totalMarketValue) * 100).toFixed(1) : '0.0'}%</span>
           <span className="text-text-muted text-xs"> / {pos.targetPct}%</span>
         </td>
         <td className="text-right px-4 py-3">
-          <span className="font-mono">{totalCapital > 0 ? ((pos.marketValue / totalCapital) * 100).toFixed(1) : '0.0'}%</span>
+          <span className="font-mono">{pos.positionPct.toFixed(1)}%</span>
         </td>
         <td className="text-right px-4 py-3">
           <PnlText value={pos.adjustPct} suffix="%" className="text-xs" />
