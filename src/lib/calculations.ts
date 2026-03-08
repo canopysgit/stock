@@ -143,7 +143,7 @@ export function computePositionSummary(
   return {
     stock,
     totalQty,
-    avgCost: round2(avgCost),
+    avgCost: round3(avgCost),
     totalCost: round2(totalCost),
     costAdjustment: round2(costAdjustment),
     marketPrice,
@@ -247,6 +247,10 @@ export function computeClearedSummaries(
 // --- Helpers ---
 function round2(n: number): number {
   return Math.round(n * 100) / 100
+}
+
+function round3(n: number): number {
+  return Math.round(n * 1000) / 1000
 }
 
 function daysBetween(a: string, b: string): number {
