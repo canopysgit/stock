@@ -170,7 +170,7 @@ export default function Dashboard() {
                   <span className="w-24 text-sm text-text-primary truncate">{pos.stock.name}</span>
                   <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden relative">
                     <div
-                      className="h-full bg-accent/60 rounded-full transition-all duration-500"
+                      className="h-full bg-sky-400/50 rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(pos.positionPct, 100)}%` }}
                     />
                     <div
