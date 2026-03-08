@@ -14,6 +14,7 @@ export interface Stock {
   peLow: number | null
   conditionPrice1: number | null
   conditionPrice2: number | null
+  valuationUpdatedAt: string | null
   status: StockStatus
   notes: string
   createdAt: string

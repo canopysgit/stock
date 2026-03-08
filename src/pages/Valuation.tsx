@@ -67,6 +67,7 @@ export default function Valuation() {
       peLow: form.peLow ? parseFloat(form.peLow) : null,
       conditionPrice1: form.conditionPrice1 ? parseFloat(form.conditionPrice1) : null,
       conditionPrice2: form.conditionPrice2 ? parseFloat(form.conditionPrice2) : null,
+      valuationUpdatedAt: new Date().toISOString().split('T')[0],
     })
     setEditModal(false)
   }
@@ -126,11 +127,14 @@ export default function Valuation() {
                         {stock.code} · {stock.industry || '未分类'}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end gap-1">
                       {hasValuation ? (
                         <span className="text-xs text-loss bg-loss/10 px-1.5 py-0.5 rounded">已估值</span>
                       ) : (
                         <span className="text-xs text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">未估值</span>
+                      )}
+                      {stock.valuationUpdatedAt && (
+                        <span className="text-[10px] text-text-muted">{stock.valuationUpdatedAt}</span>
                       )}
                     </div>
                   </div>
@@ -237,6 +241,9 @@ function ValuationDetail({ stock, currentPrice, currentPe, onEdit }: { stock: St
             )}
             {currentPe > 0 && (
               <span className="ml-2">· PE(TTM): <span className="text-text-primary font-mono">{currentPe.toFixed(2)}</span></span>
+            )}
+            {stock.valuationUpdatedAt && (
+              <span className="ml-2">· 估值更新: <span className="text-text-primary">{stock.valuationUpdatedAt}</span></span>
             )}
           </p>
         </div>

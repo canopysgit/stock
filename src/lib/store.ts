@@ -5,7 +5,7 @@ import type { Stock, Trade, Settings, StockStatus } from '../types'
 const DEMO_STOCK: Stock = {
   id: 'demo-1', code: '000001', name: '示例股票', industry: '示例行业',
   tier: 'mid', eps: 2.5, peHigh: 15, peMid: 10, peLow: 7,
-  conditionPrice1: 20, conditionPrice2: 35, status: 'holding',
+  conditionPrice1: 20, conditionPrice2: 35, valuationUpdatedAt: '2024-01-01', status: 'holding',
   notes: '请部署到您自己的服务器并配置 Supabase 环境变量',
   createdAt: '2024-01-01', updatedAt: '2024-01-01',
 }
@@ -30,6 +30,7 @@ function dbToStock(row: any): Stock {
     peLow: row.pe_low != null ? Number(row.pe_low) : null,
     conditionPrice1: row.condition_price_1 != null ? Number(row.condition_price_1) : null,
     conditionPrice2: row.condition_price_2 != null ? Number(row.condition_price_2) : null,
+    valuationUpdatedAt: row.valuation_updated_at || null,
     status: row.status || 'watching',
     notes: row.notes || '',
     createdAt: row.created_at,
@@ -49,6 +50,7 @@ function stockToDb(data: Partial<Stock>): Record<string, any> {
   if (data.peLow !== undefined) map.pe_low = data.peLow
   if (data.conditionPrice1 !== undefined) map.condition_price_1 = data.conditionPrice1
   if (data.conditionPrice2 !== undefined) map.condition_price_2 = data.conditionPrice2
+  if (data.valuationUpdatedAt !== undefined) map.valuation_updated_at = data.valuationUpdatedAt
   if (data.status !== undefined) map.status = data.status
   if (data.notes !== undefined) map.notes = data.notes
   return map
