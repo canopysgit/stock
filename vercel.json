@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/sina/(.*)", "destination": "/api/sina" },
+    { "source": "/api/eastmoney/(.*)", "destination": "/api/eastmoney" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
