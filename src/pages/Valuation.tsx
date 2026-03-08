@@ -304,8 +304,8 @@ function ValuationDetail({ stock, currentPrice, currentPe, onEdit }: { stock: St
                         const price = vp[row.key][col.key]
                         const comp = comparisons?.[row.compIdx]?.[col.compIdx]
                         const pctColor = !comp ? '' :
-                          comp.diff > 0 ? 'text-loss' :
-                          comp.diff < 0 ? 'text-profit' : 'text-text-muted'
+                          comp.diff > 0 ? 'text-profit' :
+                          comp.diff < 0 ? 'text-loss' : 'text-text-muted'
                         return (
                           <td key={col.key} className="text-right py-2 font-mono text-text-primary">
                             {price.toFixed(2)}

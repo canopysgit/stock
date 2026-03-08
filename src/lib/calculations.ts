@@ -33,7 +33,7 @@ export function calcValuationComparisons(
     const tier = prices[key]
     return [tier.p1, tier.p2, tier.p3].map((price, j) => ({
       price,
-      diff: price === 0 ? 0 : round2(((currentPrice - price) / price) * 100),
+      diff: currentPrice === 0 ? 0 : round2(((price - currentPrice) / currentPrice) * 100),
       label: `${labels[i]}${tierLabels[j]}`,
     }))
   })

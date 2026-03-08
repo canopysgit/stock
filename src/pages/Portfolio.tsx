@@ -265,7 +265,7 @@ function ExpandedDetail({ pos }: { pos: PositionSummary }) {
           {comparisons.map((row, i) => (
             <div key={i} className="space-y-1">
               {row.map((cell) => {
-                const pctColor = cell.diff > 0 ? 'text-loss' : cell.diff < 0 ? 'text-profit' : 'text-text-muted'
+                const pctColor = cell.diff > 0 ? 'text-profit' : cell.diff < 0 ? 'text-loss' : 'text-text-muted'
                 return (
                   <div key={cell.label} className="px-2 py-1 rounded text-xs bg-bg-tertiary/50">
                     <span className="text-text-primary">{cell.label} {cell.price}</span>
@@ -342,7 +342,7 @@ function WatchRow({ stock, currentPrice, expanded, onToggle }: {
             {comparisons.map((row, i) => (
               <div key={i} className="space-y-1">
                 {row.map((cell) => {
-                  const pctColor = cell.diff > 0 ? 'text-loss' : cell.diff < 0 ? 'text-profit' : 'text-text-muted'
+                  const pctColor = cell.diff > 0 ? 'text-profit' : cell.diff < 0 ? 'text-loss' : 'text-text-muted'
                   return (
                     <div key={cell.label} className="px-2 py-1 rounded text-xs bg-bg-tertiary/50">
                       <span className="text-text-primary">{cell.label} {cell.price}</span>
