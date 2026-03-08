@@ -1,31 +1,60 @@
+import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import { TIER_PCT, calcValuationPrices } from '../lib/calculations'
 import PnlText from '../components/common/PnlText'
 import { TrendingUp, TrendingDown, Briefcase, AlertTriangle } from 'lucide-react'
 
+type AlertCategory = 'all' | 'condition' | 'sell' | 'buy' | 'overweight'
+type AlertItem = { name: string; message: string; category: AlertCategory }
+
+const categoryLabels: Record<Exclude<AlertCategory, 'all'>, string> = {
+  condition: '条件单买卖点',
+  sell: '高估值卖出',
+  buy: '低估值买入',
+  overweight: '仓位超标',
+}
+
+const categoryColors: Record<Exclude<AlertCategory, 'all'>, string> = {
+  condition: 'bg-accent/10 border-accent/30 text-accent',
+  sell: 'bg-profit-bg border-profit/30 text-profit',
+  buy: 'bg-loss-bg border-loss/30 text-loss',
+  overweight: 'bg-warning-bg border-warning/30 text-warning',
+}
+
 export default function Dashboard() {
   const { portfolioStats, stocks, prices, settings } = useData()
   const { totalMarketValue, totalCost, totalPnl, totalPnlPct, totalCapital, holdingCount, positions } = portfolioStats
+  const [alertFilter, setAlertFilter] = useState<AlertCategory>('all')
 
-  // Alerts: stocks near buy targets
-  const alerts: { name: string; message: string; type: 'buy' | 'sell' | 'overweight' }[] = []
+  const alerts: AlertItem[] = []
 
   for (const stock of stocks.filter((s) => s.status === 'watching' || s.status === 'holding')) {
     const currentPrice = prices[stock.code]
-    if (!currentPrice || !stock.eps || !stock.peHigh || !stock.peMid || !stock.peLow) continue
+    if (!currentPrice) continue
 
-    const vp = calcValuationPrices(stock.eps, stock.peHigh, stock.peMid, stock.peLow)
-    // Buy signal: price near or below 低估P3 or 中估P3
-    if (currentPrice <= vp.low.p3) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于低估低吸价 ${vp.low.p3}`, type: 'buy' })
-    } else if (currentPrice <= vp.mid.p3) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于中估低吸价 ${vp.mid.p3}`, type: 'buy' })
+    // Condition price alerts (条件单买卖点)
+    if (stock.conditionPrice1 && currentPrice <= stock.conditionPrice1) {
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达条件单1买入价 ${stock.conditionPrice1}`, category: 'condition' })
     }
-    // Sell signal: price above 高估合理价 or 高估打折价
+    if (stock.conditionPrice2 && currentPrice >= stock.conditionPrice2) {
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达条件单2卖出价 ${stock.conditionPrice2}`, category: 'condition' })
+    }
+
+    if (!stock.eps || !stock.peHigh || !stock.peMid || !stock.peLow) continue
+    const vp = calcValuationPrices(stock.eps, stock.peHigh, stock.peMid, stock.peLow)
+
+    // Sell signal: high valuation
     if (currentPrice >= vp.high.p1) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估合理价 ${vp.high.p1}`, type: 'sell' })
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估合理价 ${vp.high.p1}`, category: 'sell' })
     } else if (currentPrice >= vp.high.p2) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估打折价 ${vp.high.p2}`, type: 'sell' })
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估打折价 ${vp.high.p2}`, category: 'sell' })
+    }
+
+    // Buy signal: low valuation
+    if (currentPrice <= vp.low.p3) {
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于低估低吸价 ${vp.low.p3}`, category: 'buy' })
+    } else if (currentPrice <= vp.mid.p3) {
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于中估低吸价 ${vp.mid.p3}`, category: 'buy' })
     }
   }
 
@@ -36,10 +65,16 @@ export default function Dashboard() {
       alerts.push({
         name: pos.stock.name,
         message: `当前仓位 ${pos.positionPct.toFixed(1)}% 超过目标 ${target}%`,
-        type: 'overweight',
+        category: 'overweight',
       })
     }
   }
+
+  const filteredAlerts = alertFilter === 'all' ? alerts : alerts.filter((a) => a.category === alertFilter)
+
+  // Count per category
+  const counts: Record<string, number> = {}
+  for (const a of alerts) counts[a.category] = (counts[a.category] || 0) + 1
 
   return (
     <div className="space-y-6">
@@ -60,22 +95,38 @@ export default function Dashboard() {
 
       {/* Alerts */}
       {alerts.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
-            <AlertTriangle size={16} /> 信号提醒
-          </h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
+              <AlertTriangle size={16} /> 信号提醒 ({alerts.length})
+            </h3>
+            <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
+              <button
+                onClick={() => setAlertFilter('all')}
+                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${alertFilter === 'all' ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+              >
+                全部 ({alerts.length})
+              </button>
+              {(['condition', 'sell', 'buy', 'overweight'] as const).map((cat) => (
+                counts[cat] ? (
+                  <button
+                    key={cat}
+                    onClick={() => setAlertFilter(cat)}
+                    className={`px-2.5 py-1 text-xs rounded-md transition-colors ${alertFilter === cat ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                  >
+                    {categoryLabels[cat]} ({counts[cat]})
+                  </button>
+                ) : null
+              ))}
+            </div>
+          </div>
           <div className="space-y-2">
-            {alerts.map((alert, i) => (
+            {filteredAlerts.map((alert, i) => (
               <div
                 key={i}
-                className={`px-4 py-3 rounded-lg border text-sm ${
-                  alert.type === 'buy'
-                    ? 'bg-loss-bg border-loss/30 text-loss'
-                    : alert.type === 'sell'
-                    ? 'bg-profit-bg border-profit/30 text-profit'
-                    : 'bg-warning-bg border-warning/30 text-warning'
-                }`}
+                className={`px-4 py-3 rounded-lg border text-sm ${categoryColors[alert.category as Exclude<AlertCategory, 'all'>]}`}
               >
+                <span className="text-xs opacity-70 mr-2">[{categoryLabels[alert.category as Exclude<AlertCategory, 'all'>]}]</span>
                 <span className="font-medium">{alert.name}</span> — {alert.message}
               </div>
             ))}

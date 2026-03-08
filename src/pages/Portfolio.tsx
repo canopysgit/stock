@@ -210,7 +210,7 @@ export default function Portfolio() {
 function PositionRow({ pos, totalCapital, expanded, onToggle, onAdjust }: { pos: PositionSummary; totalCapital: number; expanded: boolean; onToggle: () => void; onAdjust: () => void }) {
   const { prices } = useData()
   const currentPrice = prices[pos.stock.code] || pos.marketPrice
-  const tierLabel = pos.stock.tier === 'high' ? '高' : pos.stock.tier === 'mid' ? '中' : '低'
+  const tierLabel = pos.stock.tier === 'core' ? '核心' : pos.stock.tier === 'high' ? '高' : pos.stock.tier === 'mid' ? '中' : '低'
 
   return (
     <>
@@ -344,7 +344,7 @@ function ExpandedDetail({ pos }: { pos: PositionSummary }) {
 function WatchRow({ stock, currentPrice, expanded, onToggle }: {
   stock: any; currentPrice: number; expanded: boolean; onToggle: () => void
 }) {
-  const tierLabel = stock.tier === 'high' ? '高 (10%)' : stock.tier === 'mid' ? '中 (6%)' : '低 (3%)'
+  const tierLabel = stock.tier === 'core' ? '核心 (15%)' : stock.tier === 'high' ? '高 (10%)' : stock.tier === 'mid' ? '中 (6%)' : '低 (3%)'
 
   let valuationPanel = null
   if (expanded && stock.eps && stock.peHigh && stock.peMid && stock.peLow && currentPrice > 0) {

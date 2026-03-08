@@ -272,6 +272,7 @@ export default function Stocks() {
                 onChange={(e) => setForm({ ...form, tier: e.target.value as StockTier })}
                 className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
               >
+                <option value="core">核心 (15%)</option>
                 <option value="high">高 (10%)</option>
                 <option value="mid">中 (6%)</option>
                 <option value="low">低 (3%)</option>
@@ -322,7 +323,7 @@ function StockCard({ stock, positionPct, currentPrice, currentPe, onEdit, onDele
   onEdit: () => void
   onDelete: () => void
 }) {
-  const tierLabel = stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'
+  const tierLabel = stock.tier === 'core' ? '核心' : stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'
   const statusColor = stock.status === 'holding'
     ? 'bg-accent/15 text-accent-hover'
     : stock.status === 'watching'

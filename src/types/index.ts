@@ -1,4 +1,4 @@
-export type StockTier = 'high' | 'mid' | 'low'
+export type StockTier = 'core' | 'high' | 'mid' | 'low'
 export type StockStatus = 'watching' | 'holding' | 'cleared'
 export type TradeType = 'buy' | 'sell' | 'adjust' | 'dividend'
 

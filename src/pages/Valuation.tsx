@@ -209,7 +209,7 @@ function ValuationDetail({ stock, currentPrice, currentPe, onEdit }: { stock: St
             {stock.name} <span className="text-sm text-text-muted font-normal">{stock.code}</span>
           </h3>
           <p className="text-sm text-text-muted mt-1">
-            {stock.industry || '未分类'} · 评级: {stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'} ({TIER_PCT[stock.tier]}%)
+            {stock.industry || '未分类'} · 评级: {stock.tier === 'core' ? '核心' : stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'} ({TIER_PCT[stock.tier]}%)
             {currentPrice > 0 && (
               <span className="ml-2">· 现价: <span className="text-text-primary font-mono">{currentPrice.toFixed(2)}</span></span>
             )}

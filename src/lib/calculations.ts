@@ -5,6 +5,7 @@ import type {
 
 // --- Tier target percentages ---
 export const TIER_PCT: Record<StockTier, number> = {
+  core: 15,
   high: 10,
   mid: 6,
   low: 3,
