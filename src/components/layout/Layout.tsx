@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import Sidebar from './Sidebar'
+import Sidebar, { MobileNav } from './Sidebar'
 import { useData } from '../../context/DataContext'
 import { RefreshCw } from 'lucide-react'
 
@@ -10,7 +10,8 @@ export default function Layout() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 border-b border-border flex items-center justify-end px-6 shrink-0">
+        <header className="h-14 border-b border-border flex items-center justify-between px-4 md:justify-end md:px-6 shrink-0">
+          <span className="text-lg font-bold text-text-primary md:hidden">StockPilot</span>
           <button
             onClick={refreshPrices}
             disabled={loading}
@@ -20,10 +21,11 @@ export default function Layout() {
             {loading ? '刷新中...' : '刷新行情'}
           </button>
         </header>
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-4 md:p-6 pb-20 md:pb-6">
           <Outlet />
         </main>
       </div>
+      <MobileNav />
     </div>
   )
 }

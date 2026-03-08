@@ -70,7 +70,7 @@ export default function History() {
 
       {/* Summary stats */}
       {summaries.length > 0 && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-bg-secondary rounded-xl border border-border p-4">
             <div className="text-xs text-text-muted">清仓笔数</div>
             <div className="text-lg font-bold mt-1">{summaries.length}</div>
@@ -91,8 +91,8 @@ export default function History() {
       )}
 
       {/* Table */}
-      <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-bg-secondary rounded-xl border border-border overflow-x-auto">
+        <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-border text-text-muted">
               <th className="text-left px-4 py-3 font-medium w-8"></th>

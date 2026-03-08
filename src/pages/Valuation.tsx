@@ -84,14 +84,14 @@ export default function Valuation() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">估值模型</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg md:text-xl font-semibold shrink-0">估值模型</h2>
         <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
           {(['holding', 'watching', 'all'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => { setTab(t); setSelected(null) }}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
                 tab === t ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'
               }`}
             >
@@ -107,10 +107,10 @@ export default function Valuation() {
           <p className="text-sm mt-2">请先在「股票管理」中添加股票</p>
         </div>
       ) : (
-        <div className="grid grid-cols-12 gap-4">
+        <div className="flex flex-col md:grid md:grid-cols-12 gap-4">
           {/* Left: stock list */}
-          <div className="col-span-4 bg-bg-secondary rounded-xl border border-border overflow-hidden">
-            <div className="max-h-[calc(100vh-12rem)] overflow-auto">
+          <div className="md:col-span-4 bg-bg-secondary rounded-xl border border-border overflow-hidden">
+            <div className="max-h-60 md:max-h-[calc(100vh-12rem)] overflow-auto">
               {visibleStocks.map((stock) => {
                 const hasValuation = stock.eps && stock.peHigh && stock.peMid && stock.peLow
                 return (
@@ -144,7 +144,7 @@ export default function Valuation() {
           </div>
 
           {/* Right: valuation detail */}
-          <div className="col-span-8 bg-bg-secondary rounded-xl border border-border p-6">
+          <div className="md:col-span-8 bg-bg-secondary rounded-xl border border-border p-4 md:p-6">
             {activeStock ? (
               <ValuationDetail stock={activeStock} currentPrice={activePrice} currentPe={activeStock ? peData[activeStock.code] || 0 : 0} onEdit={() => openEdit(activeStock)} />
             ) : (

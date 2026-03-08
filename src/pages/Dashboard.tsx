@@ -100,7 +100,7 @@ export default function Dashboard() {
       <h2 className="text-xl font-semibold">仪表盘</h2>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="总市值" value={`¥${totalMarketValue.toLocaleString()}`} icon={<Briefcase size={20} />} />
         <StatCard label="总成本" value={`¥${totalCost.toLocaleString()}`} sub={`现金: ¥${settings.cashBalance.toLocaleString()}`} />
         <StatCard
@@ -115,19 +115,19 @@ export default function Dashboard() {
       {/* Alerts */}
       {alerts.length > 0 && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
             <h3
-              className="text-sm font-medium text-text-secondary flex items-center gap-2 cursor-pointer select-none"
+              className="text-sm font-medium text-text-secondary flex items-center gap-2 cursor-pointer select-none shrink-0"
               onClick={() => setAlertsCollapsed((v) => !v)}
             >
               {alertsCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
               <AlertTriangle size={16} /> 信号提醒 ({alerts.length})
             </h3>
             {!alertsCollapsed && (
-              <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
+              <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1 overflow-x-auto">
                 <button
                   onClick={() => setAlertFilter('all')}
-                  className={`px-2.5 py-1 text-xs rounded-md transition-colors ${alertFilter === 'all' ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors whitespace-nowrap ${alertFilter === 'all' ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
                 >
                   全部 ({alerts.length})
                 </button>
@@ -136,7 +136,7 @@ export default function Dashboard() {
                     <button
                       key={cat}
                       onClick={() => setAlertFilter(cat)}
-                      className={`px-2.5 py-1 text-xs rounded-md transition-colors ${alertFilter === cat ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                      className={`px-2.5 py-1 text-xs rounded-md transition-colors whitespace-nowrap ${alertFilter === cat ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
                     >
                       {categoryLabels[cat]} ({counts[cat]})
                     </button>
@@ -165,11 +165,11 @@ export default function Dashboard() {
       {positions.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-text-secondary">仓位分布</h3>
-          <div className="bg-bg-secondary rounded-xl border border-border p-5">
+          <div className="bg-bg-secondary rounded-xl border border-border p-4 md:p-5">
             <div className="space-y-3">
               {[...positions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
-                <div key={pos.stock.id} className="flex items-center gap-3">
-                  <span className="w-24 text-sm text-text-primary truncate">{pos.stock.name}</span>
+                <div key={pos.stock.id} className="flex items-center gap-2 md:gap-3">
+                  <span className="w-16 md:w-24 text-xs md:text-sm text-text-primary truncate">{pos.stock.name}</span>
                   <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden relative">
                     <div
                       className="h-full bg-sky-400/50 rounded-full transition-all duration-500"
@@ -188,8 +188,8 @@ export default function Dashboard() {
                 </div>
               ))}
               {settings.cashBalance > 0 && (
-                <div className="flex items-center gap-3">
-                  <span className="w-24 text-sm text-loss">现金</span>
+                <div className="flex items-center gap-2 md:gap-3">
+                  <span className="w-16 md:w-24 text-xs md:text-sm text-loss">现金</span>
                   <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden">
                     <div
                       className="h-full bg-loss/40 rounded-full"
@@ -223,11 +223,11 @@ function StatCard({ label, value, sub, icon }: {
   icon?: React.ReactNode
 }) {
   return (
-    <div className="bg-bg-secondary rounded-xl border border-border p-5">
+    <div className="bg-bg-secondary rounded-xl border border-border p-3 md:p-5">
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-text-muted mb-1">{label}</p>
-          <div className="text-xl font-bold text-text-primary">{value}</div>
+        <div className="min-w-0">
+          <p className="text-xs md:text-sm text-text-muted mb-1">{label}</p>
+          <div className="text-base md:text-xl font-bold text-text-primary truncate">{value}</div>
           {sub && <div className="mt-1 text-sm text-text-muted">{sub}</div>}
         </div>
         {icon && <div className="text-text-muted">{icon}</div>}

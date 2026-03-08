@@ -56,14 +56,14 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">投资组合</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg md:text-xl font-semibold shrink-0">投资组合</h2>
         <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
           {(['holding', 'watching', 'all'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
                 tab === t ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'
               }`}
             >
@@ -75,8 +75,8 @@ export default function Portfolio() {
 
       {/* Holdings table */}
       {(tab === 'holding' || tab === 'all') && displayPositions.length > 0 && (
-        <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-bg-secondary rounded-xl border border-border overflow-x-auto">
+          <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="border-b border-border text-text-muted">
                 <th className="text-left px-4 py-3 font-medium w-8"></th>
@@ -130,8 +130,8 @@ export default function Portfolio() {
       {(tab === 'watching' || tab === 'all') && watchingStocks.length > 0 && (
         <div className="space-y-2">
           {tab === 'all' && <h3 className="text-sm font-medium text-text-secondary mt-4">观察列表</h3>}
-          <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-bg-secondary rounded-xl border border-border overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-border text-text-muted">
                   <th className="text-left px-4 py-3 font-medium w-8"></th>

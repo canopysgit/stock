@@ -135,16 +135,16 @@ export default function Stocks() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">股票管理</h2>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors">
-          <Plus size={16} /> 添加股票
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg md:text-xl font-semibold shrink-0">股票管理</h2>
+        <button onClick={openAdd} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors whitespace-nowrap">
+          <Plus size={16} /> 添加
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-wrap gap-2 md:gap-3">
+        <div className="relative flex-1 min-w-[160px] max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             type="text"

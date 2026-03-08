@@ -111,19 +111,19 @@ export default function Trades() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">交易记录</h2>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors">
-          <Plus size={16} /> 新增交易
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg md:text-xl font-semibold shrink-0">交易记录</h2>
+        <button onClick={openAdd} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors whitespace-nowrap">
+          <Plus size={16} /> 新增
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-2 md:gap-3">
         <select
           value={filterStock}
           onChange={(e) => setFilterStock(e.target.value)}
-          className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+          className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary flex-1 min-w-[120px]"
         >
           <option value="">全部股票</option>
           {stocks.map((s) => (
@@ -144,8 +144,8 @@ export default function Trades() {
       </div>
 
       {/* Trades table */}
-      <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-bg-secondary rounded-xl border border-border overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="border-b border-border text-text-muted">
               <th className="text-left px-4 py-3 font-medium">日期</th>
