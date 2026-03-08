@@ -93,7 +93,7 @@ export default function Portfolio() {
               </tr>
             </thead>
             <tbody>
-              {displayPositions.map((pos) => (
+              {[...displayPositions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
                 <PositionRow key={pos.stock.id} pos={pos} totalMarketValue={portfolioStats.totalMarketValue} totalCapital={portfolioStats.totalCapital} expanded={expanded.has(pos.stock.id)} onToggle={() => toggle(pos.stock.id)} onAdjust={() => openAdjust(pos)} />
               ))}
             </tbody>
