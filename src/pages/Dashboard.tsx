@@ -21,8 +21,10 @@ export default function Dashboard() {
     } else if (currentPrice <= vp.mid.p3) {
       alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于中估低吸价 ${vp.mid.p3}`, type: 'buy' })
     }
-    // Sell signal: price above 高估打折价
-    if (currentPrice >= vp.high.p2) {
+    // Sell signal: price above 高估合理价 or 高估打折价
+    if (currentPrice >= vp.high.p1) {
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估合理价 ${vp.high.p1}`, type: 'sell' })
+    } else if (currentPrice >= vp.high.p2) {
       alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估打折价 ${vp.high.p2}`, type: 'sell' })
     }
   }
