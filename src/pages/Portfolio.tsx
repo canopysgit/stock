@@ -39,7 +39,7 @@ export default function Portfolio() {
       stockId: adjustModal.stock.id,
       type: 'adjust',
       tradeDate: new Date().toISOString().split('T')[0],
-      price: Math.round(delta * 100) / 100,
+      price: Math.round(delta * 1000) / 1000,
       quantity: 0,
       notes: `均价调整: ${adjustModal.avgCost.toFixed(3)} -> ${target.toFixed(3)}`,
     })
