@@ -25,7 +25,7 @@ export default function Portfolio() {
 
   const openAdjust = (pos: PositionSummary) => {
     setAdjustModal(pos)
-    setTargetAvgCost(pos.avgCost.toFixed(2))
+    setTargetAvgCost(pos.avgCost.toFixed(3))
   }
 
   const handleAdjustSave = async () => {
@@ -41,7 +41,7 @@ export default function Portfolio() {
       tradeDate: new Date().toISOString().split('T')[0],
       price: Math.round(delta * 100) / 100,
       quantity: 0,
-      notes: `均价调整: ${adjustModal.avgCost.toFixed(2)} -> ${target.toFixed(2)}`,
+      notes: `均价调整: ${adjustModal.avgCost.toFixed(3)} -> ${target.toFixed(3)}`,
     })
     setAdjustModal(null)
   }
@@ -158,7 +158,7 @@ export default function Portfolio() {
             <div className="bg-bg-tertiary rounded-lg p-3 text-sm">
               <div className="text-text-primary font-medium">{adjustModal.stock.name} ({adjustModal.stock.code})</div>
               <div className="text-text-muted text-xs mt-1">
-                持仓 {adjustModal.totalQty} 股 · 当前均价 <span className="font-mono text-text-primary">{adjustModal.avgCost.toFixed(2)}</span> · 总成本 <span className="font-mono">¥{adjustModal.totalCost.toLocaleString()}</span>
+                持仓 {adjustModal.totalQty} 股 · 当前均价 <span className="font-mono text-text-primary">{adjustModal.avgCost.toFixed(3)}</span> · 总成本 <span className="font-mono">¥{adjustModal.totalCost.toLocaleString()}</span>
               </div>
             </div>
             <div>
@@ -176,7 +176,7 @@ export default function Portfolio() {
               <div className="text-sm text-text-secondary space-y-1">
                 <div>调整后均价: <span className="font-mono text-text-primary">{parseFloat(targetAvgCost).toFixed(2)}</span></div>
                 <div>调整后总成本: <span className="font-mono text-text-primary">¥{(parseFloat(targetAvgCost) * adjustModal.totalQty).toLocaleString()}</span></div>
-                <div>每股调整: <span className="font-mono text-text-primary">{(parseFloat(targetAvgCost) - adjustModal.avgCost) > 0 ? '+' : ''}{(parseFloat(targetAvgCost) - adjustModal.avgCost).toFixed(2)}</span></div>
+                <div>每股调整: <span className="font-mono text-text-primary">{(parseFloat(targetAvgCost) - adjustModal.avgCost) > 0 ? '+' : ''}{(parseFloat(targetAvgCost) - adjustModal.avgCost).toFixed(3)}</span></div>
               </div>
             )}
             <div className="flex justify-end gap-3 pt-2">
@@ -212,7 +212,7 @@ function PositionRow({ pos, expanded, onToggle, onAdjust }: { pos: PositionSumma
         <td className="text-right px-4 py-3 font-mono">{currentPrice.toFixed(2)}</td>
         <td className="text-right px-4 py-3 font-mono">{pos.totalQty}</td>
         <td className="text-right px-4 py-3">
-          <span className="font-mono">{pos.avgCost.toFixed(2)}</span>
+          <span className="font-mono">{pos.avgCost.toFixed(3)}</span>
           <button
             onClick={(e) => { e.stopPropagation(); onAdjust() }}
             className="ml-1 p-0.5 text-text-muted hover:text-accent inline-block align-middle"
