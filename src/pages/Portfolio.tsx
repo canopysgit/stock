@@ -9,7 +9,7 @@ import { ChevronDown, ChevronRight, Eye, Wrench } from 'lucide-react'
 type Tab = 'holding' | 'watching' | 'all'
 
 export default function Portfolio() {
-  const { portfolioStats, stocks, trades, prices, addTrade } = useData()
+  const { portfolioStats, stocks, trades, prices, settings, addTrade } = useData()
   const [tab, setTab] = useState<Tab>('holding')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [adjustModal, setAdjustModal] = useState<PositionSummary | null>(null)
@@ -88,25 +88,38 @@ export default function Portfolio() {
                 <th className="text-right px-4 py-3 font-medium">市值</th>
                 <th className="text-right px-4 py-3 font-medium">浮动盈亏</th>
                 <th className="text-right px-4 py-3 font-medium">仓位</th>
+                <th className="text-right px-4 py-3 font-medium">总仓位</th>
                 <th className="text-right px-4 py-3 font-medium">加减仓</th>
               </tr>
             </thead>
             <tbody>
               {displayPositions.map((pos) => (
-                <PositionRow key={pos.stock.id} pos={pos} expanded={expanded.has(pos.stock.id)} onToggle={() => toggle(pos.stock.id)} onAdjust={() => openAdjust(pos)} />
+                <PositionRow key={pos.stock.id} pos={pos} totalCapital={portfolioStats.totalCapital} expanded={expanded.has(pos.stock.id)} onToggle={() => toggle(pos.stock.id)} onAdjust={() => openAdjust(pos)} />
               ))}
             </tbody>
             <tfoot>
+              {settings.cashBalance > 0 && (
+                <tr className="border-t border-border/50 text-text-muted">
+                  <td className="px-4 py-3"></td>
+                  <td className="px-4 py-3 text-sm">现金</td>
+                  <td colSpan={4}></td>
+                  <td className="text-right px-4 py-3 font-mono text-sm">¥{settings.cashBalance.toLocaleString()}</td>
+                  <td></td>
+                  <td></td>
+                  <td className="text-right px-4 py-3 font-mono text-sm">{portfolioStats.totalCapital > 0 ? ((settings.cashBalance / portfolioStats.totalCapital) * 100).toFixed(1) : '0.0'}%</td>
+                  <td></td>
+                </tr>
+              )}
               <tr className="border-t border-border font-medium">
                 <td colSpan={5} className="px-4 py-3 text-text-muted">合计</td>
                 <td className="text-right px-4 py-3">¥{portfolioStats.totalCost.toLocaleString()}</td>
-                <td className="text-right px-4 py-3">¥{portfolioStats.totalMarketValue.toLocaleString()}</td>
+                <td className="text-right px-4 py-3">¥{portfolioStats.totalCapital.toLocaleString()}</td>
                 <td className="text-right px-4 py-3">
                   <PnlText value={portfolioStats.totalPnl} />
                   <br />
                   <PnlText value={portfolioStats.totalPnlPct} suffix="%" className="text-xs" />
                 </td>
-                <td colSpan={2}></td>
+                <td colSpan={3}></td>
               </tr>
             </tfoot>
           </table>
@@ -194,7 +207,7 @@ export default function Portfolio() {
   )
 }
 
-function PositionRow({ pos, expanded, onToggle, onAdjust }: { pos: PositionSummary; expanded: boolean; onToggle: () => void; onAdjust: () => void }) {
+function PositionRow({ pos, totalCapital, expanded, onToggle, onAdjust }: { pos: PositionSummary; totalCapital: number; expanded: boolean; onToggle: () => void; onAdjust: () => void }) {
   const { prices } = useData()
   const currentPrice = prices[pos.stock.code] || pos.marketPrice
   const tierLabel = pos.stock.tier === 'high' ? '高' : pos.stock.tier === 'mid' ? '中' : '低'
@@ -233,6 +246,9 @@ function PositionRow({ pos, expanded, onToggle, onAdjust }: { pos: PositionSumma
           <span className="text-text-muted text-xs"> / {pos.targetPct}%</span>
         </td>
         <td className="text-right px-4 py-3">
+          <span className="font-mono">{totalCapital > 0 ? ((pos.marketValue / totalCapital) * 100).toFixed(1) : '0.0'}%</span>
+        </td>
+        <td className="text-right px-4 py-3">
           <PnlText value={pos.adjustPct} suffix="%" className="text-xs" />
           <br />
           <span className="text-xs text-text-muted">¥{Math.abs(pos.adjustAmount).toLocaleString()}</span>
@@ -240,7 +256,7 @@ function PositionRow({ pos, expanded, onToggle, onAdjust }: { pos: PositionSumma
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={10} className="bg-bg-tertiary/50 px-8 py-4">
+          <td colSpan={11} className="bg-bg-tertiary/50 px-8 py-4">
             <ExpandedDetail pos={pos} />
           </td>
         </tr>
