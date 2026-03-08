@@ -38,7 +38,7 @@ export default function PnlOverview() {
       {hasHolding && (
         <div className="space-y-2">
           {tab === 'all' && <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider">持仓中</h3>}
-          {positions.map((pos) => (
+          {[...positions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
             <HoldingCard
               key={pos.stock.id}
               pos={pos}
@@ -156,7 +156,7 @@ function HoldingCard({ pos, currentPrice }: { pos: PositionSummary; currentPrice
       {/* Lot blocks row */}
       {pos.lots.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {[...pos.lots].sort((a, b) => a.buyDate.localeCompare(b.buyDate)).map((lot, i) => (
+          {[...pos.lots].sort((a, b) => b.buyDate.localeCompare(a.buyDate)).map((lot, i) => (
             <LotBlock key={i} lot={lot} index={i} />
           ))}
         </div>

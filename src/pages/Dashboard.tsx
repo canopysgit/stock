@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import { TIER_PCT, calcValuationPrices } from '../lib/calculations'
 import PnlText from '../components/common/PnlText'
-import { TrendingUp, TrendingDown, Briefcase, AlertTriangle } from 'lucide-react'
+import { TrendingUp, TrendingDown, Briefcase, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 
 type AlertCategory = 'all' | 'condition' | 'sell' | 'buy' | 'overweight'
 type AlertItem = { name: string; message: string; category: AlertCategory }
@@ -25,6 +25,7 @@ export default function Dashboard() {
   const { portfolioStats, stocks, prices, settings } = useData()
   const { totalMarketValue, totalCost, totalPnl, totalPnlPct, totalCapital, holdingCount, positions } = portfolioStats
   const [alertFilter, setAlertFilter] = useState<AlertCategory>('all')
+  const [alertsCollapsed, setAlertsCollapsed] = useState(false)
 
   const alerts: AlertItem[] = []
 
@@ -97,40 +98,48 @@ export default function Dashboard() {
       {alerts.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
+            <h3
+              className="text-sm font-medium text-text-secondary flex items-center gap-2 cursor-pointer select-none"
+              onClick={() => setAlertsCollapsed((v) => !v)}
+            >
+              {alertsCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
               <AlertTriangle size={16} /> 信号提醒 ({alerts.length})
             </h3>
-            <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
-              <button
-                onClick={() => setAlertFilter('all')}
-                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${alertFilter === 'all' ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
-              >
-                全部 ({alerts.length})
-              </button>
-              {(['condition', 'sell', 'buy', 'overweight'] as const).map((cat) => (
-                counts[cat] ? (
-                  <button
-                    key={cat}
-                    onClick={() => setAlertFilter(cat)}
-                    className={`px-2.5 py-1 text-xs rounded-md transition-colors ${alertFilter === cat ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
-                  >
-                    {categoryLabels[cat]} ({counts[cat]})
-                  </button>
-                ) : null
+            {!alertsCollapsed && (
+              <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
+                <button
+                  onClick={() => setAlertFilter('all')}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors ${alertFilter === 'all' ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                >
+                  全部 ({alerts.length})
+                </button>
+                {(['condition', 'sell', 'buy', 'overweight'] as const).map((cat) => (
+                  counts[cat] ? (
+                    <button
+                      key={cat}
+                      onClick={() => setAlertFilter(cat)}
+                      className={`px-2.5 py-1 text-xs rounded-md transition-colors ${alertFilter === cat ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                    >
+                      {categoryLabels[cat]} ({counts[cat]})
+                    </button>
+                  ) : null
+                ))}
+              </div>
+            )}
+          </div>
+          {!alertsCollapsed && (
+            <div className="space-y-2">
+              {filteredAlerts.map((alert, i) => (
+                <div
+                  key={i}
+                  className={`px-4 py-3 rounded-lg border text-sm ${categoryColors[alert.category as Exclude<AlertCategory, 'all'>]}`}
+                >
+                  <span className="text-xs opacity-70 mr-2">[{categoryLabels[alert.category as Exclude<AlertCategory, 'all'>]}]</span>
+                  <span className="font-medium">{alert.name}</span> — {alert.message}
+                </div>
               ))}
             </div>
-          </div>
-          <div className="space-y-2">
-            {filteredAlerts.map((alert, i) => (
-              <div
-                key={i}
-                className={`px-4 py-3 rounded-lg border text-sm ${categoryColors[alert.category as Exclude<AlertCategory, 'all'>]}`}
-              >
-                <span className="text-xs opacity-70 mr-2">[{categoryLabels[alert.category as Exclude<AlertCategory, 'all'>]}]</span>
-                <span className="font-medium">{alert.name}</span> — {alert.message}
-              </div>
-            ))}
-          </div>
+          )}
         </div>
       )}
 
@@ -140,7 +149,7 @@ export default function Dashboard() {
           <h3 className="text-sm font-medium text-text-secondary">仓位分布</h3>
           <div className="bg-bg-secondary rounded-xl border border-border p-5">
             <div className="space-y-3">
-              {positions.map((pos) => (
+              {[...positions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
                 <div key={pos.stock.id} className="flex items-center gap-3">
                   <span className="w-24 text-sm text-text-primary truncate">{pos.stock.name}</span>
                   <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden relative">
