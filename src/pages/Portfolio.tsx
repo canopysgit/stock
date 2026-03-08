@@ -31,7 +31,7 @@ export default function Portfolio() {
   const handleAdjustSave = async () => {
     if (!adjustModal) return
     const target = parseFloat(targetAvgCost)
-    if (isNaN(target) || target <= 0) return
+    if (isNaN(target)) return
     const delta = target - adjustModal.avgCost
     if (Math.abs(delta) < 0.001) { setAdjustModal(null); return }
 
