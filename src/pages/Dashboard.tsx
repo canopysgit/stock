@@ -187,14 +187,14 @@ export default function Dashboard() {
               ))}
               {settings.cashBalance > 0 && (
                 <div className="flex items-center gap-3">
-                  <span className="w-24 text-sm text-text-muted">现金</span>
+                  <span className="w-24 text-sm text-loss">现金</span>
                   <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-text-muted/30 rounded-full"
+                      className="h-full bg-loss/40 rounded-full"
                       style={{ width: `${(settings.cashBalance / totalCapital) * 100}%` }}
                     />
                   </div>
-                  <span className="w-28 text-right text-sm whitespace-nowrap text-text-muted">
+                  <span className="w-28 text-right text-sm whitespace-nowrap text-loss">
                     {((settings.cashBalance / totalCapital) * 100).toFixed(1)}%
                   </span>
                 </div>
