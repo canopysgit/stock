@@ -314,7 +314,7 @@ function ExpandedDetail({ pos }: { pos: PositionSummary }) {
           </tr>
         </thead>
         <tbody>
-          {pos.lots.map((lot, i) => (
+          {[...pos.lots].sort((a, b) => b.buyDate.localeCompare(a.buyDate)).map((lot, i) => (
             <tr key={i} className="border-t border-border/30">
               <td className="py-1.5 pr-4">{lot.buyDate}</td>
               <td className="text-right pr-4 font-mono">{lot.buyPrice.toFixed(2)}</td>
