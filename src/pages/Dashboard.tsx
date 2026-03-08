@@ -162,49 +162,56 @@ export default function Dashboard() {
       )}
 
       {/* Position allocation */}
-      {positions.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-text-secondary">仓位分布</h3>
-          <div className="bg-bg-secondary rounded-xl border border-border p-4 md:p-5">
-            <div className="space-y-3">
-              {[...positions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
-                <div key={pos.stock.id} className="flex items-center gap-2 md:gap-3">
-                  <span className="w-16 md:w-24 text-xs md:text-sm text-text-primary truncate">{pos.stock.name}</span>
-                  <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden relative">
-                    <div
-                      className="h-full bg-sky-400/50 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(pos.positionPct, 100)}%` }}
-                    />
-                    <div
-                      className="absolute top-0 h-full border-r-2 border-dashed border-warning/60"
-                      style={{ left: `${Math.min(pos.targetPct, 100)}%` }}
-                      title={`目标: ${pos.targetPct}%`}
-                    />
+      {positions.length > 0 && (() => {
+        const cashPct = totalCapital > 0 ? (settings.cashBalance / totalCapital) * 100 : 0
+        const allPcts = [...positions.map((p) => p.positionPct), ...positions.map((p) => p.targetPct), cashPct]
+        const scaleMax = Math.max(...allPcts) * 1.15 // 15% padding so bars fill most of the width
+        const scale = (pct: number) => scaleMax > 0 ? (pct / scaleMax) * 100 : 0
+
+        return (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-text-secondary">仓位分布</h3>
+            <div className="bg-bg-secondary rounded-xl border border-border p-4 md:p-5">
+              <div className="space-y-3">
+                {[...positions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
+                  <div key={pos.stock.id} className="flex items-center gap-2 md:gap-3">
+                    <span className="w-16 md:w-24 text-xs md:text-sm text-text-primary truncate">{pos.stock.name}</span>
+                    <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden relative">
+                      <div
+                        className="h-full bg-sky-400/50 rounded-full transition-all duration-500"
+                        style={{ width: `${scale(pos.positionPct)}%` }}
+                      />
+                      <div
+                        className="absolute top-0 h-full border-r-2 border-dashed border-warning/60"
+                        style={{ left: `${scale(pos.targetPct)}%` }}
+                        title={`目标: ${pos.targetPct}%`}
+                      />
+                    </div>
+                    <span className="w-28 text-right text-sm whitespace-nowrap">
+                      <span className="text-text-primary">{pos.positionPct.toFixed(1)}%</span>
+                      <span className="text-text-muted"> / {pos.targetPct}%</span>
+                    </span>
                   </div>
-                  <span className="w-28 text-right text-sm whitespace-nowrap">
-                    <span className="text-text-primary">{pos.positionPct.toFixed(1)}%</span>
-                    <span className="text-text-muted"> / {pos.targetPct}%</span>
-                  </span>
-                </div>
-              ))}
-              {settings.cashBalance > 0 && (
-                <div className="flex items-center gap-2 md:gap-3">
-                  <span className="w-16 md:w-24 text-xs md:text-sm text-loss">现金</span>
-                  <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-loss/40 rounded-full"
-                      style={{ width: `${(settings.cashBalance / totalCapital) * 100}%` }}
-                    />
+                ))}
+                {settings.cashBalance > 0 && (
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <span className="w-16 md:w-24 text-xs md:text-sm text-loss">现金</span>
+                    <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-loss/40 rounded-full"
+                        style={{ width: `${scale(cashPct)}%` }}
+                      />
+                    </div>
+                    <span className="w-28 text-right text-sm whitespace-nowrap text-loss">
+                      {cashPct.toFixed(1)}%
+                    </span>
                   </div>
-                  <span className="w-28 text-right text-sm whitespace-nowrap text-loss">
-                    {((settings.cashBalance / totalCapital) * 100).toFixed(1)}%
-                  </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {positions.length === 0 && alerts.length === 0 && (
         <div className="text-center py-16 text-text-muted">
