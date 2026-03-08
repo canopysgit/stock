@@ -6,9 +6,12 @@ import Modal from '../components/common/Modal'
 import type { Stock } from '../types'
 import { Edit2, Download } from 'lucide-react'
 
+type Tab = 'holding' | 'watching' | 'all'
+
 export default function Valuation() {
   const { stocks, prices, peData, updateStock } = useData()
   const [selected, setSelected] = useState<string | null>(null)
+  const [tab, setTab] = useState<Tab>('holding')
   const [editModal, setEditModal] = useState(false)
   const [form, setForm] = useState({
     eps: '',
@@ -71,16 +74,35 @@ export default function Valuation() {
   const activeStock = selected ? stocks.find((s) => s.id === selected) : null
   const activePrice = activeStock ? prices[activeStock.code] || 0 : 0
 
-  // Filter: only show non-cleared stocks in the list
-  const visibleStocks = stocks.filter((s) => s.status !== 'cleared')
+  // Filter stocks by tab
+  const visibleStocks = stocks.filter((s) => {
+    if (s.status === 'cleared') return false
+    if (tab === 'all') return true
+    return s.status === tab
+  })
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">估值模型</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">估值模型</h2>
+        <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
+          {(['holding', 'watching', 'all'] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTab(t); setSelected(null) }}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                tab === t ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {t === 'holding' ? '持仓中' : t === 'watching' ? '观察中' : '全部'}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {stocks.length === 0 ? (
+      {visibleStocks.length === 0 ? (
         <div className="text-center py-16 text-text-muted">
-          <p className="text-lg">暂无股票</p>
+          <p className="text-lg">暂无{tab === 'holding' ? '持仓' : tab === 'watching' ? '观察' : ''}股票</p>
           <p className="text-sm mt-2">请先在「股票管理」中添加股票</p>
         </div>
       ) : (
