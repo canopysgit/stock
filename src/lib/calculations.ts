@@ -111,11 +111,13 @@ export function computePositionSummary(
   totalCapital: number,
 ): PositionSummary {
   const stockTrades = trades.filter((t) => t.stockId === stock.id)
-  const { openLots, costAdjustment } = computeLots(stockTrades)
+  const { openLots, realizedPnl, costAdjustment } = computeLots(stockTrades)
 
   const totalQty = openLots.reduce((s, l) => s + l.remainingQty, 0)
   const rawLotCost = openLots.reduce((s, l) => s + l.remainingQty * l.buyPrice, 0)
-  const totalCost = rawLotCost + costAdjustment // adjusted total cost
+  // Subtract realized sell profits to get diluted cost (做T摊薄成本)
+  const realizedProfit = realizedPnl.reduce((s, r) => s + (r.sellPrice - r.buyPrice) * r.qty, 0)
+  const totalCost = rawLotCost + costAdjustment - realizedProfit
   const avgCost = totalQty > 0 ? totalCost / totalQty : 0
   const marketValue = totalQty * marketPrice
   const floatingPnl = marketValue - totalCost
