@@ -136,14 +136,14 @@ export default function Stocks() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg md:text-xl font-semibold shrink-0">股票管理</h2>
-        <button onClick={openAdd} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors whitespace-nowrap">
+        <h2 className="text-lg lg:text-xl font-semibold shrink-0">股票管理</h2>
+        <button onClick={openAdd} className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors whitespace-nowrap">
           <Plus size={16} /> 添加
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 md:gap-3">
+      <div className="flex flex-wrap gap-2 lg:gap-3">
         <div className="relative flex-1 min-w-[160px] max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
@@ -183,7 +183,7 @@ export default function Stocks() {
                 {(!filterStatus || filterStatus !== 'holding') && (watchingStocks.length > 0 || clearedStocks.length > 0) && (
                   <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider">持仓中 ({holdingStocks.length})</h3>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                   {holdingStocks.map((stock) => (
                     <StockCard key={stock.id} stock={stock} positionPct={posPctMap[stock.id]} currentPrice={prices[stock.code] || 0} currentPe={peData[stock.code] || 0} onEdit={() => openEdit(stock)} onDelete={() => handleDelete(stock.id)} />
                   ))}
@@ -195,7 +195,7 @@ export default function Stocks() {
                 {(!filterStatus || filterStatus !== 'watching') && (holdingStocks.length > 0 || clearedStocks.length > 0) && (
                   <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mt-2">观察中 ({watchingStocks.length})</h3>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                   {watchingStocks.map((stock) => (
                     <StockCard key={stock.id} stock={stock} currentPrice={prices[stock.code] || 0} currentPe={peData[stock.code] || 0} onEdit={() => openEdit(stock)} onDelete={() => handleDelete(stock.id)} />
                   ))}
@@ -207,7 +207,7 @@ export default function Stocks() {
                 {(!filterStatus || filterStatus !== 'cleared') && (holdingStocks.length > 0 || watchingStocks.length > 0) && (
                   <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mt-2">已清仓 ({clearedStocks.length})</h3>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                   {clearedStocks.map((stock) => (
                     <StockCard key={stock.id} stock={stock} currentPrice={prices[stock.code] || 0} currentPe={peData[stock.code] || 0} onEdit={() => openEdit(stock)} onDelete={() => handleDelete(stock.id)} />
                   ))}

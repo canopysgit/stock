@@ -42,7 +42,7 @@ const moreLinks = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-56 h-screen bg-bg-secondary border-r border-border flex-col shrink-0 hidden md:flex">
+    <aside className="w-56 h-screen bg-bg-secondary border-r border-border flex-col shrink-0 hidden lg:flex">
       <div className="h-14 flex items-center px-5 border-b border-border">
         <h1 className="text-lg font-bold text-text-primary tracking-wide">
           StockPilot
@@ -88,7 +88,7 @@ export function MobileNav() {
   return (
     <>
       {moreOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)} />
           <div className="absolute bottom-16 left-0 right-0 bg-bg-secondary border-t border-border rounded-t-xl px-2 py-3 space-y-1">
             {moreLinks.map(({ to, icon: Icon, label }) => (
@@ -120,7 +120,7 @@ export function MobileNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-bg-secondary border-t border-border flex md:hidden pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-bg-secondary border-t border-border flex lg:hidden pb-[env(safe-area-inset-bottom)]">
         {mobileTabs.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}

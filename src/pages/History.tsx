@@ -70,7 +70,7 @@ export default function History() {
 
       {/* Summary stats */}
       {summaries.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-bg-secondary rounded-xl border border-border p-4">
             <div className="text-xs text-text-muted">清仓笔数</div>
             <div className="text-lg font-bold mt-1">{summaries.length}</div>

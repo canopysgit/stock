@@ -57,7 +57,7 @@ export default function Portfolio() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg md:text-xl font-semibold shrink-0">投资组合</h2>
+        <h2 className="text-lg lg:text-xl font-semibold shrink-0">投资组合</h2>
         <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
           {(['holding', 'watching', 'all'] as Tab[]).map((t) => (
             <button
@@ -73,9 +73,9 @@ export default function Portfolio() {
         </div>
       </div>
 
-      {/* Holdings table */}
+      {/* Holdings: Desktop table */}
       {(tab === 'holding' || tab === 'all') && displayPositions.length > 0 && (
-        <div className="bg-bg-secondary rounded-xl border border-border overflow-x-auto">
+        <div className="hidden lg:block bg-bg-secondary rounded-xl border border-border overflow-x-auto">
           <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="border-b border-border text-text-muted">
@@ -126,11 +126,39 @@ export default function Portfolio() {
         </div>
       )}
 
-      {/* Watching table */}
+      {/* Holdings: Mobile cards */}
+      {(tab === 'holding' || tab === 'all') && displayPositions.length > 0 && (
+        <div className="lg:hidden space-y-3">
+          {[...displayPositions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
+            <MobilePositionCard key={pos.stock.id} pos={pos} totalMarketValue={portfolioStats.totalMarketValue} expanded={expanded.has(pos.stock.id)} onToggle={() => toggle(pos.stock.id)} onAdjust={() => openAdjust(pos)} />
+          ))}
+          {settings.cashBalance > 0 && (
+            <div className="bg-bg-secondary rounded-xl border border-border px-4 py-3 flex items-center justify-between">
+              <span className="text-sm text-loss font-medium">现金</span>
+              <div className="text-right">
+                <span className="text-sm font-mono text-loss">¥{settings.cashBalance.toLocaleString()}</span>
+                <span className="text-xs text-loss ml-2">{portfolioStats.totalCapital > 0 ? ((settings.cashBalance / portfolioStats.totalCapital) * 100).toFixed(1) : '0.0'}%</span>
+              </div>
+            </div>
+          )}
+          <div className="bg-bg-secondary rounded-xl border border-border px-4 py-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-text-muted">合计</span>
+              <div className="text-right">
+                <span className="font-mono">¥{portfolioStats.totalCapital.toLocaleString()}</span>
+                <span className="ml-3"><PnlText value={portfolioStats.totalPnl} className="font-mono" /></span>
+                <span className="ml-1"><PnlText value={portfolioStats.totalPnlPct} suffix="%" className="text-xs" /></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Watching: Desktop table */}
       {(tab === 'watching' || tab === 'all') && watchingStocks.length > 0 && (
         <div className="space-y-2">
           {tab === 'all' && <h3 className="text-sm font-medium text-text-secondary mt-4">观察列表</h3>}
-          <div className="bg-bg-secondary rounded-xl border border-border overflow-x-auto">
+          <div className="hidden lg:block bg-bg-secondary rounded-xl border border-border overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-border text-text-muted">
@@ -154,6 +182,30 @@ export default function Portfolio() {
                 })}
               </tbody>
             </table>
+          </div>
+          {/* Watching: Mobile cards */}
+          <div className="lg:hidden space-y-3">
+            {watchingStocks.map((stock) => {
+              const currentPrice = prices[stock.code] || 0
+              const tierLabel = stock.tier === 'core' ? '核心 (15%)' : stock.tier === 'high' ? '高 (10%)' : stock.tier === 'mid' ? '中 (6%)' : '低 (3%)'
+              return (
+                <div key={stock.id} className="bg-bg-secondary rounded-xl border border-border px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-medium text-text-primary text-sm">{stock.name}</span>
+                      <span className="text-xs text-text-muted ml-2">{stock.code}</span>
+                    </div>
+                    <span className="text-xs text-text-muted">{tierLabel}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                    <span><span className="text-text-muted">现价 </span><span className="font-mono text-text-primary">{currentPrice > 0 ? currentPrice.toFixed(2) : '-'}</span></span>
+                    {stock.conditionPrice1 && <span><span className="text-text-muted">条件1 </span><span className="font-mono">{stock.conditionPrice1}</span></span>}
+                    {stock.conditionPrice2 && <span><span className="text-text-muted">条件2 </span><span className="font-mono">{stock.conditionPrice2}</span></span>}
+                  </div>
+                  {stock.notes && <div className="text-xs text-text-muted truncate">{stock.notes}</div>}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -337,6 +389,80 @@ function ExpandedDetail({ pos }: { pos: PositionSummary }) {
         </div>
       )}
       {valuationPanel}
+    </div>
+  )
+}
+
+function MobilePositionCard({ pos, totalMarketValue, expanded, onToggle, onAdjust }: {
+  pos: PositionSummary; totalMarketValue: number; expanded: boolean; onToggle: () => void; onAdjust: () => void
+}) {
+  const { prices } = useData()
+  const currentPrice = prices[pos.stock.code] || pos.marketPrice
+  const tierLabel = pos.stock.tier === 'core' ? '核心' : pos.stock.tier === 'high' ? '高' : pos.stock.tier === 'mid' ? '中' : '低'
+  const posPct = totalMarketValue > 0 ? ((pos.marketValue / totalMarketValue) * 100).toFixed(1) : '0.0'
+
+  return (
+    <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
+      <div className="px-4 py-3 space-y-2 cursor-pointer" onClick={onToggle}>
+        {/* Row 1: name + pnl */}
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-text-primary text-sm">{pos.stock.name}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">{tierLabel}</span>
+            </div>
+            <span className="text-xs text-text-muted">{pos.stock.code} · {pos.stock.industry}</span>
+          </div>
+          <div className="text-right shrink-0">
+            <PnlText value={pos.floatingPnl} className="font-mono text-sm" />
+            <div><PnlText value={pos.floatingPnlPct} suffix="%" className="text-xs" /></div>
+          </div>
+        </div>
+        {/* Row 2: key metrics */}
+        <div className="grid grid-cols-4 gap-2 text-xs">
+          <div>
+            <div className="text-text-muted">现价</div>
+            <div className="font-mono text-text-primary">{currentPrice.toFixed(2)}</div>
+          </div>
+          <div>
+            <div className="text-text-muted">均价</div>
+            <div className="font-mono text-text-primary">{pos.avgCost.toFixed(3)}</div>
+          </div>
+          <div>
+            <div className="text-text-muted">持仓</div>
+            <div className="font-mono text-text-primary">{pos.totalQty}</div>
+          </div>
+          <div>
+            <div className="text-text-muted">市值</div>
+            <div className="font-mono text-text-primary">¥{pos.marketValue.toLocaleString()}</div>
+          </div>
+        </div>
+        {/* Row 3: position + adjust */}
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex gap-3">
+            <span><span className="text-text-muted">仓位 </span><span className="font-mono">{posPct}%</span><span className="text-text-muted"> / {pos.targetPct}%</span></span>
+            <span><span className="text-text-muted">总仓位 </span><span className="font-mono">{pos.positionPct.toFixed(1)}%</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <PnlText value={pos.adjustPct} suffix="%" className="text-xs" />
+            <span className="text-text-muted">{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
+          </div>
+        </div>
+      </div>
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-border px-4 py-3 bg-bg-tertiary/50">
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); onAdjust() }}
+              className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover"
+            >
+              <Wrench size={12} /> 调整均价
+            </button>
+          </div>
+          <ExpandedDetail pos={pos} />
+        </div>
+      )}
     </div>
   )
 }

@@ -85,7 +85,7 @@ export default function Valuation() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg md:text-xl font-semibold shrink-0">估值模型</h2>
+        <h2 className="text-lg lg:text-xl font-semibold shrink-0">估值模型</h2>
         <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
           {(['holding', 'watching', 'all'] as Tab[]).map((t) => (
             <button
@@ -107,10 +107,29 @@ export default function Valuation() {
           <p className="text-sm mt-2">请先在「股票管理」中添加股票</p>
         </div>
       ) : (
-        <div className="flex flex-col md:grid md:grid-cols-12 gap-4">
-          {/* Left: stock list */}
-          <div className="md:col-span-4 bg-bg-secondary rounded-xl border border-border overflow-hidden">
-            <div className="max-h-60 md:max-h-[calc(100vh-12rem)] overflow-auto">
+        <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-4">
+          {/* Mobile: stock dropdown */}
+          <div className="lg:hidden">
+            <select
+              value={selected || ''}
+              onChange={(e) => setSelected(e.target.value || null)}
+              className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary"
+            >
+              <option value="">选择股票查看估值</option>
+              {visibleStocks.map((stock) => {
+                const hasV = stock.eps && stock.peHigh && stock.peMid && stock.peLow
+                return (
+                  <option key={stock.id} value={stock.id}>
+                    {stock.name} ({stock.code}) {hasV ? '- 已估值' : '- 未估值'}
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+
+          {/* Desktop: left stock list */}
+          <div className="hidden lg:block lg:col-span-4 bg-bg-secondary rounded-xl border border-border overflow-hidden">
+            <div className="max-h-[calc(100vh-12rem)] overflow-auto">
               {visibleStocks.map((stock) => {
                 const hasValuation = stock.eps && stock.peHigh && stock.peMid && stock.peLow
                 return (
@@ -143,12 +162,15 @@ export default function Valuation() {
             </div>
           </div>
 
-          {/* Right: valuation detail */}
-          <div className="md:col-span-8 bg-bg-secondary rounded-xl border border-border p-4 md:p-6">
+          {/* Right/Bottom: valuation detail */}
+          <div className="lg:col-span-8 bg-bg-secondary rounded-xl border border-border p-4 lg:p-6">
             {activeStock ? (
               <ValuationDetail stock={activeStock} currentPrice={activePrice} currentPe={activeStock ? peData[activeStock.code] || 0 : 0} onEdit={() => openEdit(activeStock)} />
             ) : (
-              <div className="text-center py-16 text-text-muted text-sm">选择左侧股票查看估值详情</div>
+              <div className="text-center py-16 text-text-muted text-sm">
+                <span className="hidden lg:inline">选择左侧股票查看估值详情</span>
+                <span className="lg:hidden">请从上方选择股票</span>
+              </div>
             )}
           </div>
         </div>
@@ -228,37 +250,38 @@ function ValuationDetail({ stock, currentPrice, currentPe, onEdit }: { stock: St
   const hasValuation = stock.eps && stock.peHigh && stock.peMid && stock.peLow
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">
+    <div className="space-y-4 lg:space-y-6">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="text-base lg:text-lg font-semibold">
             {stock.name} <span className="text-sm text-text-muted font-normal">{stock.code}</span>
           </h3>
-          <p className="text-sm text-text-muted mt-1">
-            {stock.industry || '未分类'} · 评级: {stock.tier === 'core' ? '核心' : stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'} ({TIER_PCT[stock.tier]}%)
+          <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs lg:text-sm text-text-muted mt-1">
+            <span>{stock.industry || '未分类'}</span>
+            <span>· {stock.tier === 'core' ? '核心' : stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'} ({TIER_PCT[stock.tier]}%)</span>
             {currentPrice > 0 && (
-              <span className="ml-2">· 现价: <span className="text-text-primary font-mono">{currentPrice.toFixed(2)}</span></span>
+              <span>· 现价 <span className="text-text-primary font-mono">{currentPrice.toFixed(2)}</span></span>
             )}
             {currentPe > 0 && (
-              <span className="ml-2">· PE(TTM): <span className="text-text-primary font-mono">{currentPe.toFixed(2)}</span></span>
+              <span>· PE <span className="text-text-primary font-mono">{currentPe.toFixed(2)}</span></span>
             )}
             {stock.valuationUpdatedAt && (
-              <span className="ml-2">· 估值更新: <span className="text-text-primary">{stock.valuationUpdatedAt}</span></span>
+              <span>· 更新 <span className="text-text-primary">{stock.valuationUpdatedAt}</span></span>
             )}
-          </p>
+          </div>
         </div>
         <button
           onClick={onEdit}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors shrink-0"
         >
-          <Edit2 size={14} /> 编辑估值
+          <Edit2 size={14} /> <span className="hidden lg:inline">编辑估值</span><span className="lg:hidden">编辑</span>
         </button>
       </div>
 
       {/* Valuation params */}
       <div>
         <h4 className="text-sm font-medium text-text-secondary mb-2">估值参数</h4>
-        <div className="grid grid-cols-4 gap-3 text-sm">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 text-sm">
           <div className="bg-bg-tertiary rounded-lg p-3">
             <div className="text-text-muted text-xs">预计EPS</div>
             <div className="font-mono mt-1">{stock.eps ?? '-'}</div>
@@ -316,7 +339,8 @@ function ValuationDetail({ stock, currentPrice, currentPe, onEdit }: { stock: St
             ]
 
             return (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[320px]">
                 <thead>
                   <tr className="text-text-muted text-xs">
                     <th className="text-left py-2 font-medium"></th>
@@ -348,6 +372,7 @@ function ValuationDetail({ stock, currentPrice, currentPe, onEdit }: { stock: St
                   ))}
                 </tbody>
               </table>
+              </div>
             )
           })()}
         </div>

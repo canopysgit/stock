@@ -19,7 +19,7 @@ export default function PnlOverview() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg md:text-xl font-semibold shrink-0">盈亏总览</h2>
+        <h2 className="text-lg lg:text-xl font-semibold shrink-0">盈亏总览</h2>
         <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
           {(['holding', 'watching', 'all'] as Tab[]).map((t) => (
             <button

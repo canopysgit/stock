@@ -112,14 +112,14 @@ export default function Trades() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg md:text-xl font-semibold shrink-0">交易记录</h2>
-        <button onClick={openAdd} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors whitespace-nowrap">
+        <h2 className="text-lg lg:text-xl font-semibold shrink-0">交易记录</h2>
+        <button onClick={openAdd} className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors whitespace-nowrap">
           <Plus size={16} /> 新增
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 md:gap-3">
+      <div className="flex flex-wrap gap-2 lg:gap-3">
         <select
           value={filterStock}
           onChange={(e) => setFilterStock(e.target.value)}
