@@ -294,11 +294,11 @@ function PositionRow({ pos, totalMarketValue, totalCapital, expanded, onToggle, 
           <PnlText value={pos.floatingPnlPct} suffix="%" className="text-xs" />
         </td>
         <td className="text-right px-4 py-3">
-          <span className="font-mono">{totalMarketValue > 0 ? ((pos.marketValue / totalMarketValue) * 100).toFixed(1) : '0.0'}%</span>
+          <span className="font-mono">{totalMarketValue > 0 ? ((pos.marketValue / totalMarketValue) * 100).toFixed(2) : '0.00'}%</span>
           <span className="text-text-muted text-xs"> / {pos.targetPct}%</span>
         </td>
         <td className="text-right px-4 py-3">
-          <span className="font-mono">{pos.positionPct.toFixed(1)}%</span>
+          <span className="font-mono">{pos.positionPct.toFixed(2)}%</span>
         </td>
         <td className="text-right px-4 py-3">
           <PnlText value={pos.adjustPct} suffix="%" className="text-xs" />
@@ -438,7 +438,7 @@ function MobilePositionCard({ pos, totalMarketValue, expanded, onToggle, onAdjus
   const { prices } = useData()
   const currentPrice = prices[pos.stock.code] || pos.marketPrice
   const tierLabel = pos.stock.tier === 'core' ? '核心' : pos.stock.tier === 'high' ? '高' : pos.stock.tier === 'mid' ? '中' : '低'
-  const posPct = totalMarketValue > 0 ? ((pos.marketValue / totalMarketValue) * 100).toFixed(1) : '0.0'
+  const posPct = totalMarketValue > 0 ? ((pos.marketValue / totalMarketValue) * 100).toFixed(2) : '0.00'
 
   return (
     <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
@@ -480,7 +480,7 @@ function MobilePositionCard({ pos, totalMarketValue, expanded, onToggle, onAdjus
         <div className="flex items-center justify-between text-xs">
           <div className="flex gap-3">
             <span><span className="text-text-muted">仓位 </span><span className="font-mono">{posPct}%</span><span className="text-text-muted"> / {pos.targetPct}%</span></span>
-            <span><span className="text-text-muted">总仓位 </span><span className="font-mono">{pos.positionPct.toFixed(1)}%</span></span>
+            <span><span className="text-text-muted">总仓位 </span><span className="font-mono">{pos.positionPct.toFixed(2)}%</span></span>
           </div>
           <div className="flex items-center gap-2">
             <PnlText value={pos.adjustPct} suffix="%" className="text-xs" />
