@@ -4,13 +4,14 @@ import { calcValuationPrices, calcValuationComparisons, TIER_PCT } from '../lib/
 import { fetchEpsForecast, type EpsForecast } from '../lib/forecast'
 import Modal from '../components/common/Modal'
 import type { Stock } from '../types'
-import { Edit2, Download } from 'lucide-react'
+import { Edit2, Download, ChevronDown, ChevronRight } from 'lucide-react'
 
 type Tab = 'holding' | 'watching' | 'all'
 
 export default function Valuation() {
   const { stocks, prices, peData, updateStock } = useData()
   const [selected, setSelected] = useState<string | null>(null)
+  const [mobileExpanded, setMobileExpanded] = useState<Set<string>>(new Set())
   const [tab, setTab] = useState<Tab>('holding')
   const [editModal, setEditModal] = useState(false)
   const [form, setForm] = useState({
@@ -72,6 +73,23 @@ export default function Valuation() {
     setEditModal(false)
   }
 
+  const toggleMobileExpand = (id: string) => {
+    setMobileExpanded((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  // Track which stock is being edited (for mobile cards where selected may not be set)
+  const [editingStockId, setEditingStockId] = useState<string | null>(null)
+
+  const openEditMobile = (stock: Stock) => {
+    setEditingStockId(stock.id)
+    setSelected(stock.id)
+    openEdit(stock)
+  }
+
   const activeStock = selected ? stocks.find((s) => s.id === selected) : null
   const activePrice = activeStock ? prices[activeStock.code] || 0 : 0
 
@@ -107,73 +125,73 @@ export default function Valuation() {
           <p className="text-sm mt-2">请先在「股票管理」中添加股票</p>
         </div>
       ) : (
-        <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-4">
-          {/* Mobile: stock dropdown */}
-          <div className="lg:hidden">
-            <select
-              value={selected || ''}
-              onChange={(e) => setSelected(e.target.value || null)}
-              className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary"
-            >
-              <option value="">选择股票查看估值</option>
-              {visibleStocks.map((stock) => {
-                const hasV = stock.eps && stock.peHigh && stock.peMid && stock.peLow
-                return (
-                  <option key={stock.id} value={stock.id}>
-                    {stock.name} ({stock.code}) {hasV ? '- 已估值' : '- 未估值'}
-                  </option>
-                )
-              })}
-            </select>
+        <>
+          {/* Mobile: collapsible card list */}
+          <div className="lg:hidden space-y-3">
+            {visibleStocks.map((stock) => {
+              const currentPrice = prices[stock.code] || 0
+              const currentPe = peData[stock.code] || 0
+              const hasValuation = stock.eps && stock.peHigh && stock.peMid && stock.peLow
+              const isExpanded = mobileExpanded.has(stock.id)
+              return (
+                <MobileValuationCard
+                  key={stock.id}
+                  stock={stock}
+                  currentPrice={currentPrice}
+                  currentPe={currentPe}
+                  hasValuation={!!hasValuation}
+                  expanded={isExpanded}
+                  onToggle={() => toggleMobileExpand(stock.id)}
+                  onEdit={() => openEditMobile(stock)}
+                />
+              )
+            })}
           </div>
 
-          {/* Desktop: left stock list */}
-          <div className="hidden lg:block lg:col-span-4 bg-bg-secondary rounded-xl border border-border overflow-hidden">
-            <div className="max-h-[calc(100vh-12rem)] overflow-auto">
-              {visibleStocks.map((stock) => {
-                const hasValuation = stock.eps && stock.peHigh && stock.peMid && stock.peLow
-                return (
-                  <div
-                    key={stock.id}
-                    onClick={() => setSelected(stock.id)}
-                    className={`flex items-center justify-between px-4 py-3 border-b border-border/50 cursor-pointer transition-colors ${
-                      selected === stock.id ? 'bg-accent/10' : 'hover:bg-bg-hover'
-                    }`}
-                  >
-                    <div>
-                      <div className="text-sm font-medium text-text-primary">{stock.name}</div>
-                      <div className="text-xs text-text-muted">
-                        {stock.code} · {stock.industry || '未分类'}
+          {/* Desktop: left list + right detail */}
+          <div className="hidden lg:grid lg:grid-cols-12 lg:gap-4">
+            <div className="lg:col-span-4 bg-bg-secondary rounded-xl border border-border overflow-hidden">
+              <div className="max-h-[calc(100vh-12rem)] overflow-auto">
+                {visibleStocks.map((stock) => {
+                  const hasValuation = stock.eps && stock.peHigh && stock.peMid && stock.peLow
+                  return (
+                    <div
+                      key={stock.id}
+                      onClick={() => setSelected(stock.id)}
+                      className={`flex items-center justify-between px-4 py-3 border-b border-border/50 cursor-pointer transition-colors ${
+                        selected === stock.id ? 'bg-accent/10' : 'hover:bg-bg-hover'
+                      }`}
+                    >
+                      <div>
+                        <div className="text-sm font-medium text-text-primary">{stock.name}</div>
+                        <div className="text-xs text-text-muted">
+                          {stock.code} · {stock.industry || '未分类'}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {hasValuation ? (
+                          <span className="text-xs text-loss bg-loss/10 px-1.5 py-0.5 rounded">已估值</span>
+                        ) : (
+                          <span className="text-xs text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">未估值</span>
+                        )}
+                        {stock.valuationUpdatedAt && (
+                          <span className="text-[10px] text-text-muted">{stock.valuationUpdatedAt}</span>
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {hasValuation ? (
-                        <span className="text-xs text-loss bg-loss/10 px-1.5 py-0.5 rounded">已估值</span>
-                      ) : (
-                        <span className="text-xs text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">未估值</span>
-                      )}
-                      {stock.valuationUpdatedAt && (
-                        <span className="text-[10px] text-text-muted">{stock.valuationUpdatedAt}</span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+            </div>
+            <div className="lg:col-span-8 bg-bg-secondary rounded-xl border border-border p-6">
+              {activeStock ? (
+                <ValuationDetail stock={activeStock} currentPrice={activePrice} currentPe={activeStock ? peData[activeStock.code] || 0 : 0} onEdit={() => openEdit(activeStock)} />
+              ) : (
+                <div className="text-center py-16 text-text-muted text-sm">选择左侧股票查看估值详情</div>
+              )}
             </div>
           </div>
-
-          {/* Right/Bottom: valuation detail */}
-          <div className="lg:col-span-8 bg-bg-secondary rounded-xl border border-border p-4 lg:p-6">
-            {activeStock ? (
-              <ValuationDetail stock={activeStock} currentPrice={activePrice} currentPe={activeStock ? peData[activeStock.code] || 0 : 0} onEdit={() => openEdit(activeStock)} />
-            ) : (
-              <div className="text-center py-16 text-text-muted text-sm">
-                <span className="hidden lg:inline">选择左侧股票查看估值详情</span>
-                <span className="lg:hidden">请从上方选择股票</span>
-              </div>
-            )}
-          </div>
-        </div>
+        </>
       )}
 
       {/* Edit valuation modal */}
@@ -242,6 +260,111 @@ export default function Valuation() {
           </div>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+function MobileValuationCard({ stock, currentPrice, currentPe, hasValuation, expanded, onToggle, onEdit }: {
+  stock: Stock; currentPrice: number; currentPe: number; hasValuation: boolean; expanded: boolean; onToggle: () => void; onEdit: () => void
+}) {
+  const tierLabel = stock.tier === 'core' ? '核心' : stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'
+
+  return (
+    <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
+      {/* Collapsed header */}
+      <div className="px-4 py-3 cursor-pointer" onClick={onToggle}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-semibold text-text-primary text-sm truncate">{stock.name}</span>
+            <span className="text-xs text-text-muted shrink-0">{stock.code}</span>
+            {hasValuation ? (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-loss/10 text-loss shrink-0">已估值</span>
+            ) : (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-text-muted/10 text-text-muted shrink-0">未估值</span>
+            )}
+          </div>
+          <span className="text-text-muted shrink-0 ml-2">
+            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+        </div>
+        {/* Summary row: key numbers */}
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-text-muted">
+          {currentPrice > 0 && <span>现价 <span className="font-mono text-text-primary">{currentPrice.toFixed(2)}</span></span>}
+          {currentPe > 0 && <span>PE <span className="font-mono text-text-primary">{currentPe.toFixed(2)}</span></span>}
+          <span>{tierLabel} ({TIER_PCT[stock.tier]}%)</span>
+          {stock.valuationUpdatedAt && <span>更新 {stock.valuationUpdatedAt}</span>}
+        </div>
+      </div>
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-border px-4 py-3 space-y-3">
+          <div className="flex justify-end">
+            <button onClick={(e) => { e.stopPropagation(); onEdit() }} className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover">
+              <Edit2 size={12} /> 编辑估值
+            </button>
+          </div>
+          {hasValuation ? (() => {
+            const vp = calcValuationPrices(stock.eps!, stock.peHigh!, stock.peMid!, stock.peLow!)
+            const comparisons = currentPrice > 0 ? calcValuationComparisons(vp, currentPrice) : null
+            const rows = [
+              { key: 'low' as const, label: '低估PE', compIdx: 2 },
+              { key: 'mid' as const, label: '中估PE', compIdx: 1 },
+              { key: 'high' as const, label: '高估PE', compIdx: 0 },
+            ]
+            const cols = [
+              { key: 'p3' as const, label: '低吸价', compIdx: 2 },
+              { key: 'p2' as const, label: '打折价', compIdx: 1 },
+              { key: 'p1' as const, label: '合理价', compIdx: 0 },
+            ]
+            return (
+              <>
+                <div className="grid grid-cols-4 gap-1.5 text-xs">
+                  <div className="bg-bg-tertiary rounded p-2"><div className="text-text-muted">EPS</div><div className="font-mono mt-0.5">{stock.eps}</div></div>
+                  <div className="bg-bg-tertiary rounded p-2"><div className="text-text-muted">低估PE</div><div className="font-mono mt-0.5">{stock.peLow}</div></div>
+                  <div className="bg-bg-tertiary rounded p-2"><div className="text-text-muted">中估PE</div><div className="font-mono mt-0.5">{stock.peMid}</div></div>
+                  <div className="bg-bg-tertiary rounded p-2"><div className="text-text-muted">高估PE</div><div className="font-mono mt-0.5">{stock.peHigh}</div></div>
+                </div>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-text-muted">
+                      <th className="text-left py-1 font-medium"></th>
+                      {cols.map((c) => <th key={c.key} className="text-right py-1 font-medium">{c.label}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={row.key} className="border-t border-border/30">
+                        <td className="py-1.5 text-text-muted">{row.label}</td>
+                        {cols.map((col) => {
+                          const price = vp[row.key][col.key]
+                          const comp = comparisons?.[row.compIdx]?.[col.compIdx]
+                          const pctColor = !comp ? '' : comp.diff > 0 ? 'text-profit' : comp.diff < 0 ? 'text-loss' : 'text-text-muted'
+                          return (
+                            <td key={col.key} className="text-right py-1.5 font-mono text-text-primary">
+                              {price.toFixed(2)}
+                              {comp && <span className={`ml-0.5 ${pctColor}`}>({comp.diff > 0 ? '+' : ''}{comp.diff}%)</span>}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(stock.conditionPrice1 || stock.conditionPrice2) && (
+                  <div className="flex gap-3 text-xs text-text-muted">
+                    {stock.conditionPrice1 && <span>条件1: <span className="font-mono text-text-primary">{stock.conditionPrice1}</span></span>}
+                    {stock.conditionPrice2 && <span>条件2: <span className="font-mono text-text-primary">{stock.conditionPrice2}</span></span>}
+                  </div>
+                )}
+              </>
+            )
+          })() : (
+            <div className="text-center py-4 text-text-muted text-xs bg-bg-tertiary rounded-lg">
+              尚未设置估值参数
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
