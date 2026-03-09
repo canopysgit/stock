@@ -318,8 +318,34 @@ function PositionRow({ pos, totalMarketValue, totalCapital, expanded, onToggle, 
 }
 
 function ExpandedDetail({ pos }: { pos: PositionSummary }) {
-  const { prices } = useData()
+  const { prices, trades } = useData()
   const currentPrice = prices[pos.stock.code] || pos.marketPrice
+
+  // Build unified timeline: buy lots + sell trades
+  const sellTrades = trades.filter((t) => t.stockId === pos.stock.id && t.type === 'sell')
+
+  type TimelineItem =
+    | { type: 'buy'; date: string; price: number; originalQty: number; remainingQty: number; floatingPnl: number; floatingPnlPct: number }
+    | { type: 'sell'; date: string; price: number; quantity: number; amount: number }
+
+  const timeline: TimelineItem[] = [
+    ...pos.lots.map((lot): TimelineItem => ({
+      type: 'buy',
+      date: lot.buyDate,
+      price: lot.buyPrice,
+      originalQty: lot.originalQty,
+      remainingQty: lot.remainingQty,
+      floatingPnl: lot.floatingPnl,
+      floatingPnlPct: lot.floatingPnlPct,
+    })),
+    ...sellTrades.map((t): TimelineItem => ({
+      type: 'sell',
+      date: t.tradeDate,
+      price: t.price,
+      quantity: t.quantity,
+      amount: t.price * t.quantity,
+    })),
+  ].sort((a, b) => b.date.localeCompare(a.date))
 
   // Valuation panel
   let valuationPanel = null
@@ -350,33 +376,46 @@ function ExpandedDetail({ pos }: { pos: PositionSummary }) {
 
   return (
     <div>
-      {/* Lot details */}
+      {/* Trade timeline */}
       <h4 className="text-xs font-medium text-text-muted mb-2">
         逐笔交易明细 {pos.lastBuyDate && <span className="ml-2">最近买入: {pos.lastBuyDate}</span>}
       </h4>
       <table className="w-full text-xs">
         <thead>
           <tr className="text-text-muted">
-            <th className="text-left py-1 pr-4">买入日期</th>
-            <th className="text-right py-1 pr-4">买入价</th>
-            <th className="text-right py-1 pr-4">原始量</th>
-            <th className="text-right py-1 pr-4">剩余量</th>
-            <th className="text-right py-1 pr-4">浮动盈亏</th>
-            <th className="text-right py-1">盈亏比例</th>
+            <th className="text-left py-1 pr-4">日期</th>
+            <th className="text-left py-1 pr-4">类型</th>
+            <th className="text-right py-1 pr-4">价格</th>
+            <th className="text-right py-1 pr-4">数量</th>
+            <th className="text-right py-1 pr-4">盈亏/金额</th>
           </tr>
         </thead>
         <tbody>
-          {[...pos.lots].sort((a, b) => b.buyDate.localeCompare(a.buyDate)).map((lot, i) => (
+          {timeline.map((item, i) => (
             <tr key={i} className="border-t border-border/30">
-              <td className="py-1.5 pr-4">{lot.buyDate}</td>
-              <td className="text-right pr-4 font-mono">{lot.buyPrice.toFixed(2)}</td>
-              <td className="text-right pr-4 font-mono">{lot.originalQty}</td>
-              <td className="text-right pr-4 font-mono">{lot.remainingQty}</td>
-              <td className="text-right pr-4">
-                <PnlText value={lot.floatingPnl} className="font-mono" />
+              <td className="py-1.5 pr-4">{item.date}</td>
+              <td className="py-1.5 pr-4">
+                {item.type === 'buy' ? (
+                  <span className="text-profit font-medium">买入</span>
+                ) : (
+                  <span className="text-loss font-medium">卖出</span>
+                )}
               </td>
-              <td className="text-right">
-                <PnlText value={lot.floatingPnlPct} suffix="%" className="font-mono" />
+              <td className="text-right pr-4 font-mono">{item.price.toFixed(2)}</td>
+              <td className="text-right pr-4 font-mono">
+                {item.type === 'buy'
+                  ? `${item.remainingQty}/${item.originalQty}`
+                  : item.quantity}
+              </td>
+              <td className="text-right pr-4">
+                {item.type === 'buy' ? (
+                  <span>
+                    <PnlText value={item.floatingPnl} className="font-mono" />
+                    <span className="ml-1"><PnlText value={item.floatingPnlPct} suffix="%" className="font-mono" /></span>
+                  </span>
+                ) : (
+                  <span className="font-mono text-text-primary">¥{item.amount.toLocaleString()}</span>
+                )}
               </td>
             </tr>
           ))}

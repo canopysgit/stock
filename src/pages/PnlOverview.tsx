@@ -100,7 +100,7 @@ function LotBlock({ lot, index }: { lot: LotInfo; index: number }) {
       style={{ backgroundColor: lotBg(pct) }}
     >
       <span className="absolute top-0.5 left-1.5 text-[10px] text-text-muted/60 font-mono">{index + 1}</span>
-      <div className="text-[10px] text-text-muted mt-1">{fmtDate(lot.buyDate)}</div>
+      <div className="text-[10px] text-text-primary mt-1">{fmtDate(lot.buyDate)}</div>
       <div className="text-xs text-text-secondary font-mono">{lot.buyPrice.toFixed(2)}</div>
       <div className={`text-sm font-mono font-semibold ${textColor}`}>
         {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
