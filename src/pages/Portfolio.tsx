@@ -198,7 +198,7 @@ export default function Portfolio() {
                     <span className="text-xs text-text-muted">{tierLabel}</span>
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                    <span><span className="text-text-muted">现价 </span><span className="font-mono text-text-primary">{currentPrice > 0 ? currentPrice.toFixed(2) : '-'}</span></span>
+                    <span><span className="text-text-muted">现价 </span><span className="font-mono text-text-primary">{currentPrice > 0 ? currentPrice.toFixed(3) : '-'}</span></span>
                     {stock.conditionPrice1 && <span><span className="text-text-muted">条件1 </span><span className="font-mono">{stock.conditionPrice1}</span></span>}
                     {stock.conditionPrice2 && <span><span className="text-text-muted">条件2 </span><span className="font-mono">{stock.conditionPrice2}</span></span>}
                   </div>
@@ -274,7 +274,7 @@ function PositionRow({ pos, totalMarketValue, totalCapital, expanded, onToggle, 
           <div className="font-medium text-text-primary">{pos.stock.name}</div>
           <div className="text-xs text-text-muted">{pos.stock.code} · {pos.stock.industry} · {tierLabel}</div>
         </td>
-        <td className="text-right px-4 py-3 font-mono">{currentPrice.toFixed(2)}</td>
+        <td className="text-right px-4 py-3 font-mono">{currentPrice.toFixed(3)}</td>
         <td className="text-right px-4 py-3 font-mono">{pos.totalQty}</td>
         <td className="text-right px-4 py-3">
           <span className="font-mono">{pos.avgCost.toFixed(3)}</span>
@@ -354,7 +354,7 @@ function ExpandedDetail({ pos }: { pos: PositionSummary }) {
     const comparisons = calcValuationComparisons(vp, currentPrice)
     valuationPanel = (
       <div className="mt-4">
-        <h4 className="text-xs font-medium text-text-muted mb-2">估值对比 (现价: {currentPrice.toFixed(2)})</h4>
+        <h4 className="text-xs font-medium text-text-muted mb-2">估值对比 (现价: {currentPrice.toFixed(3)})</h4>
         <div className="grid grid-cols-3 gap-2">
           {comparisons.map((row, i) => (
             <div key={i} className="space-y-1">
@@ -461,7 +461,7 @@ function MobilePositionCard({ pos, totalMarketValue, expanded, onToggle, onAdjus
         <div className="grid grid-cols-4 gap-2 text-xs">
           <div>
             <div className="text-text-muted">现价</div>
-            <div className="font-mono text-text-primary">{currentPrice.toFixed(2)}</div>
+            <div className="font-mono text-text-primary">{currentPrice.toFixed(3)}</div>
           </div>
           <div>
             <div className="text-text-muted">均价</div>
@@ -518,7 +518,7 @@ function WatchRow({ stock, currentPrice, expanded, onToggle }: {
     valuationPanel = (
       <tr>
         <td colSpan={8} className="bg-bg-tertiary/50 px-8 py-4">
-          <h4 className="text-xs font-medium text-text-muted mb-2">估值对比 (现价: {currentPrice.toFixed(2)})</h4>
+          <h4 className="text-xs font-medium text-text-muted mb-2">估值对比 (现价: {currentPrice.toFixed(3)})</h4>
           <div className="grid grid-cols-3 gap-2">
             {comparisons.map((row, i) => (
               <div key={i} className="space-y-1">
@@ -549,7 +549,7 @@ function WatchRow({ stock, currentPrice, expanded, onToggle }: {
           <div className="font-medium text-text-primary">{stock.name}</div>
           <div className="text-xs text-text-muted">{stock.code} · {stock.industry}</div>
         </td>
-        <td className="text-right px-4 py-3 font-mono">{currentPrice > 0 ? currentPrice.toFixed(2) : '-'}</td>
+        <td className="text-right px-4 py-3 font-mono">{currentPrice > 0 ? currentPrice.toFixed(3) : '-'}</td>
         <td className="text-right px-4 py-3 font-mono">{stock.conditionPrice1 ?? '-'}</td>
         <td className="text-right px-4 py-3 font-mono">{stock.conditionPrice2 ?? '-'}</td>
         <td className="text-right px-4 py-3">{tierLabel.split(' ')[1]}</td>
