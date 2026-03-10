@@ -180,8 +180,8 @@ export default function Trades() {
                   </td>
                   <td className="text-right px-4 py-3 font-mono">
                     {(trade.type === 'adjust' || trade.type === 'dividend') ? (
-                      <span>{trade.type === 'dividend' ? '' : (trade.price > 0 ? '+' : '')}{trade.price.toFixed(2)}/股</span>
-                    ) : trade.price.toFixed(2)}
+                      <span>{trade.type === 'dividend' ? '' : (trade.price > 0 ? '+' : '')}{trade.price.toFixed(3)}/股</span>
+                    ) : trade.price.toFixed(3)}
                   </td>
                   <td className="text-right px-4 py-3 font-mono">
                     {(trade.type === 'adjust' || trade.type === 'dividend') ? '-' : trade.quantity}
@@ -287,7 +287,7 @@ export default function Trades() {
           </div>
           {form.price && (form.type === 'adjust' || form.type === 'dividend') && (
             <div className="text-sm text-text-secondary">
-              {form.type === 'adjust' ? '成本调整' : '分红'}: <span className="font-mono text-text-primary">{form.type === 'dividend' ? '' : (parseFloat(form.price) > 0 ? '+' : '')}{parseFloat(form.price).toFixed(2)} 元/股</span>
+              {form.type === 'adjust' ? '成本调整' : '分红'}: <span className="font-mono text-text-primary">{form.type === 'dividend' ? '' : (parseFloat(form.price) > 0 ? '+' : '')}{parseFloat(form.price).toFixed(3)} 元/股</span>
             </div>
           )}
           {form.price && form.quantity && (form.type === 'buy' || form.type === 'sell') && (

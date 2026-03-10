@@ -370,7 +370,7 @@ function StockCard({ stock, positionPct, currentPrice, currentPe, onEdit, onDele
         {currentPrice > 0 && (
           <div>
             <span className="text-text-muted text-xs">现价</span>
-            <span className="ml-1 font-mono text-text-primary">{currentPrice.toFixed(2)}</span>
+            <span className="ml-1 font-mono text-text-primary">{currentPrice.toFixed(3)}</span>
           </div>
         )}
         {currentPe > 0 && (
@@ -388,15 +388,15 @@ function StockCard({ stock, positionPct, currentPrice, currentPe, onEdit, onDele
           <div className="flex items-center gap-3 text-xs">
             <div>
               <span className="text-text-muted">低估值</span>
-              <span className="ml-1 font-mono text-loss">{vp.low.p1.toFixed(2)}</span>
+              <span className="ml-1 font-mono text-loss">{vp.low.p1.toFixed(3)}</span>
             </div>
             <div>
               <span className="text-text-muted">中估值</span>
-              <span className="ml-1 font-mono text-warning">{vp.mid.p1.toFixed(2)}</span>
+              <span className="ml-1 font-mono text-warning">{vp.mid.p1.toFixed(3)}</span>
             </div>
             <div>
               <span className="text-text-muted">高估值</span>
-              <span className="ml-1 font-mono text-profit">{vp.high.p1.toFixed(2)}</span>
+              <span className="ml-1 font-mono text-profit">{vp.high.p1.toFixed(3)}</span>
             </div>
           </div>
         )

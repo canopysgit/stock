@@ -289,7 +289,7 @@ function MobileValuationCard({ stock, currentPrice, currentPe, hasValuation, exp
         </div>
         {/* Summary row: key numbers */}
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-text-muted">
-          {currentPrice > 0 && <span>现价 <span className="font-mono text-text-primary">{currentPrice.toFixed(2)}</span></span>}
+          {currentPrice > 0 && <span>现价 <span className="font-mono text-text-primary">{currentPrice.toFixed(3)}</span></span>}
           {currentPe > 0 && <span>PE <span className="font-mono text-text-primary">{currentPe.toFixed(2)}</span></span>}
           <span>{tierLabel} ({TIER_PCT[stock.tier]}%)</span>
           {stock.valuationUpdatedAt && <span>更新 {stock.valuationUpdatedAt}</span>}
@@ -341,7 +341,7 @@ function MobileValuationCard({ stock, currentPrice, currentPe, hasValuation, exp
                           const pctColor = !comp ? '' : comp.diff > 0 ? 'text-profit' : comp.diff < 0 ? 'text-loss' : 'text-text-muted'
                           return (
                             <td key={col.key} className="text-right py-1.5 font-mono text-text-primary">
-                              {price.toFixed(2)}
+                              {price.toFixed(3)}
                               {comp && <span className={`ml-0.5 ${pctColor}`}>({comp.diff > 0 ? '+' : ''}{comp.diff}%)</span>}
                             </td>
                           )
@@ -383,7 +383,7 @@ function ValuationDetail({ stock, currentPrice, currentPe, onEdit }: { stock: St
             <span>{stock.industry || '未分类'}</span>
             <span>· {stock.tier === 'core' ? '核心' : stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'} ({TIER_PCT[stock.tier]}%)</span>
             {currentPrice > 0 && (
-              <span>· 现价 <span className="text-text-primary font-mono">{currentPrice.toFixed(2)}</span></span>
+              <span>· 现价 <span className="text-text-primary font-mono">{currentPrice.toFixed(3)}</span></span>
             )}
             {currentPe > 0 && (
               <span>· PE <span className="text-text-primary font-mono">{currentPe.toFixed(2)}</span></span>
@@ -484,7 +484,7 @@ function ValuationDetail({ stock, currentPrice, currentPe, onEdit }: { stock: St
                           comp.diff < 0 ? 'text-loss' : 'text-text-muted'
                         return (
                           <td key={col.key} className="text-right py-2 font-mono text-text-primary">
-                            {price.toFixed(2)}
+                            {price.toFixed(3)}
                             {comp && (
                               <span className={`text-xs ml-1 ${pctColor}`}>({comp.diff > 0 ? '+' : ''}{comp.diff}%)</span>
                             )}

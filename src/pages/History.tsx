@@ -168,7 +168,7 @@ export default function History() {
                                       {t.type === 'buy' ? '买入' : '卖出'}
                                     </span>
                                   </td>
-                                  <td className="text-right font-mono">{t.price.toFixed(2)}</td>
+                                  <td className="text-right font-mono">{t.price.toFixed(3)}</td>
                                   <td className="text-right font-mono">{t.quantity}</td>
                                   <td className="text-right font-mono">¥{(t.price * t.quantity).toLocaleString()}</td>
                                   <td className="text-text-muted">{t.notes || '-'}</td>

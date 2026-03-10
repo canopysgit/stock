@@ -101,7 +101,7 @@ function LotBlock({ lot, index }: { lot: LotInfo; index: number }) {
     >
       <span className="absolute top-0.5 left-1.5 text-[10px] text-text-muted/60 font-mono">{index + 1}</span>
       <div className="text-[10px] text-text-primary mt-1">{fmtDate(lot.buyDate)}</div>
-      <div className="text-xs text-text-secondary font-mono">{lot.buyPrice.toFixed(2)}</div>
+      <div className="text-xs text-text-secondary font-mono">{lot.buyPrice.toFixed(3)}</div>
       <div className={`text-sm font-mono font-semibold ${textColor}`}>
         {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
       </div>
@@ -147,7 +147,7 @@ function HoldingCard({ pos, currentPrice }: { pos: PositionSummary; currentPrice
         </span>
         <span className="text-sm">
           <span className="text-xs text-text-muted">现价 </span>
-          <span className="font-mono font-semibold text-text-primary">{currentPrice.toFixed(2)}</span>
+          <span className="font-mono font-semibold text-text-primary">{currentPrice.toFixed(3)}</span>
         </span>
         <CondTag label="买入" price={cond1} dist={d1} />
         <CondTag label="卖出" price={cond2} dist={d2} />
@@ -181,7 +181,7 @@ function WatchingCard({ stock, currentPrice }: { stock: Stock; currentPrice: num
         </div>
         <span className="text-sm">
           <span className="text-xs text-text-muted">现价 </span>
-          <span className="font-mono text-text-primary">{currentPrice > 0 ? currentPrice.toFixed(2) : '-'}</span>
+          <span className="font-mono text-text-primary">{currentPrice > 0 ? currentPrice.toFixed(3) : '-'}</span>
         </span>
         <CondTag label="买入" price={cond1} dist={d1} />
         <CondTag label="卖出" price={cond2} dist={d2} />

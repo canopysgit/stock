@@ -401,7 +401,7 @@ function ExpandedDetail({ pos }: { pos: PositionSummary }) {
                   <span className="text-loss font-medium">卖出</span>
                 )}
               </td>
-              <td className="text-right pr-4 font-mono">{item.price.toFixed(2)}</td>
+              <td className="text-right pr-4 font-mono">{item.price.toFixed(3)}</td>
               <td className="text-right pr-4 font-mono">
                 {item.type === 'buy'
                   ? `${item.remainingQty}/${item.originalQty}`
