@@ -81,19 +81,28 @@ export default function Dashboard() {
     }
   }
 
+  // Deduplicate alerts by name + message
+  const seen = new Set<string>()
+  const dedupedAlerts = alerts.filter((a) => {
+    const key = `${a.name}|${a.category}|${a.message}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
   // Sort alerts: group by category order, then by excessPct desc within each group
   const categoryOrder: Record<string, number> = { condition: 0, sell: 1, buy: 2, overweight: 3 }
-  alerts.sort((a, b) => {
+  dedupedAlerts.sort((a, b) => {
     const catDiff = (categoryOrder[a.category] ?? 9) - (categoryOrder[b.category] ?? 9)
     if (catDiff !== 0) return catDiff
     return b.excessPct - a.excessPct
   })
 
-  const filteredAlerts = alertFilter === 'all' ? alerts : alerts.filter((a) => a.category === alertFilter)
+  const filteredAlerts = alertFilter === 'all' ? dedupedAlerts : dedupedAlerts.filter((a) => a.category === alertFilter)
 
   // Count per category
   const counts: Record<string, number> = {}
-  for (const a of alerts) counts[a.category] = (counts[a.category] || 0) + 1
+  for (const a of dedupedAlerts) counts[a.category] = (counts[a.category] || 0) + 1
 
   return (
     <div className="space-y-6">
@@ -113,7 +122,7 @@ export default function Dashboard() {
       </div>
 
       {/* Alerts */}
-      {alerts.length > 0 && (
+      {dedupedAlerts.length > 0 && (
         <div className="space-y-3">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
             <h3
@@ -121,7 +130,7 @@ export default function Dashboard() {
               onClick={() => setAlertsCollapsed((v) => !v)}
             >
               {alertsCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-              <AlertTriangle size={16} /> 信号提醒 ({alerts.length})
+              <AlertTriangle size={16} /> 信号提醒 ({dedupedAlerts.length})
             </h3>
             {!alertsCollapsed && (
               <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1 overflow-x-auto">
@@ -129,7 +138,7 @@ export default function Dashboard() {
                   onClick={() => setAlertFilter('all')}
                   className={`px-2.5 py-1 text-xs rounded-md transition-colors whitespace-nowrap ${alertFilter === 'all' ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
                 >
-                  全部 ({alerts.length})
+                  全部 ({dedupedAlerts.length})
                 </button>
                 {(['condition', 'sell', 'buy', 'overweight'] as const).map((cat) => (
                   counts[cat] ? (
@@ -213,7 +222,7 @@ export default function Dashboard() {
         )
       })()}
 
-      {positions.length === 0 && alerts.length === 0 && (
+      {positions.length === 0 && dedupedAlerts.length === 0 && (
         <div className="text-center py-16 text-text-muted">
           <p className="text-lg">暂无数据</p>
           <p className="text-sm mt-2">前往「股票管理」添加股票，然后在「交易记录」中录入交易</p>
