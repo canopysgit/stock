@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import type { PositionSummary, Stock, LotInfo } from '../types'
+import PnlText from '../components/common/PnlText'
 
 type Tab = 'holding' | 'watching' | 'all'
 
@@ -18,14 +19,14 @@ export default function PnlOverview() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">盈亏总览</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg lg:text-xl font-semibold shrink-0">盈亏总览</h2>
         <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
           {(['holding', 'watching', 'all'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
                 tab === t ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'
               }`}
             >
@@ -38,7 +39,7 @@ export default function PnlOverview() {
       {hasHolding && (
         <div className="space-y-2">
           {tab === 'all' && <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider">持仓中</h3>}
-          {positions.map((pos) => (
+          {[...positions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
             <HoldingCard
               key={pos.stock.id}
               pos={pos}
@@ -93,16 +94,29 @@ function fmtDate(d: string): string {
 // --- Lot block ---
 function LotBlock({ lot, index }: { lot: LotInfo; index: number }) {
   const pct = lot.floatingPnlPct
-  const textColor = pct > 0 ? 'text-profit' : pct < 0 ? 'text-loss' : 'text-text-muted'
+  const pnl = lot.floatingPnl
+  const color = pct > 0 ? 'text-profit' : pct < 0 ? 'text-loss' : 'text-text-muted'
+  const hasAdjust = Math.abs(lot.adjustedBuyPrice - lot.buyPrice) > 0.001
   return (
     <div
-      className="rounded-lg px-2.5 py-2 min-w-[4.5rem] text-center relative"
+      className="rounded-lg px-2.5 py-2 min-w-[5rem] text-center relative"
       style={{ backgroundColor: lotBg(pct) }}
     >
       <span className="absolute top-0.5 left-1.5 text-[10px] text-text-muted/60 font-mono">{index + 1}</span>
-      <div className="text-[10px] text-text-muted mt-1">{fmtDate(lot.buyDate)}</div>
-      <div className="text-xs text-text-secondary font-mono">{lot.buyPrice.toFixed(2)}</div>
-      <div className={`text-sm font-mono font-semibold ${textColor}`}>
+      <div className="text-[10px] text-text-primary mt-1">{fmtDate(lot.buyDate)}</div>
+      {hasAdjust ? (
+        <div className="text-xs text-text-secondary font-mono">
+          <span className="line-through opacity-50">{lot.buyPrice.toFixed(2)}</span>
+          <span className="ml-0.5">{lot.adjustedBuyPrice.toFixed(2)}</span>
+        </div>
+      ) : (
+        <div className="text-xs text-text-secondary font-mono">{lot.buyPrice.toFixed(3)}</div>
+      )}
+      <div className="text-[10px] text-text-muted font-mono">{lot.remainingQty}股</div>
+      <div className={`text-xs font-mono font-semibold ${color}`}>
+        {pnl > 0 ? '+' : ''}{pnl.toFixed(0)}
+      </div>
+      <div className={`text-[10px] font-mono ${color}`}>
         {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
       </div>
     </div>
@@ -147,16 +161,37 @@ function HoldingCard({ pos, currentPrice }: { pos: PositionSummary; currentPrice
         </span>
         <span className="text-sm">
           <span className="text-xs text-text-muted">现价 </span>
-          <span className="font-mono font-semibold text-text-primary">{currentPrice.toFixed(2)}</span>
+          <span className="font-mono font-semibold text-text-primary">{currentPrice.toFixed(3)}</span>
         </span>
         <CondTag label="买入" price={cond1} dist={d1} />
         <CondTag label="卖出" price={cond2} dist={d2} />
       </div>
 
+      {/* PnL: lot浮动 + 调整(差额) = 软件浮动 */}
+      {(() => {
+        const adjustGap = pos.positionFloatingPnl - pos.floatingPnl
+        return (
+          <div className="flex items-center gap-3 text-sm flex-wrap">
+            <span className="text-xs text-text-muted">浮动</span>
+            <PnlText value={pos.floatingPnl} className="font-mono" />
+            <PnlText value={pos.floatingPnlPct} suffix="%" className="text-xs" />
+            {adjustGap !== 0 && (
+              <>
+                <span className="text-text-muted">+</span>
+                <span className="text-xs text-text-muted">调整</span>
+                <PnlText value={adjustGap} className="font-mono text-xs" />
+              </>
+            )}
+            <span className="text-text-muted">=</span>
+            <PnlText value={pos.positionFloatingPnl} className="font-mono font-semibold" />
+          </div>
+        )
+      })()}
+
       {/* Lot blocks row */}
       {pos.lots.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {[...pos.lots].sort((a, b) => a.buyDate.localeCompare(b.buyDate)).map((lot, i) => (
+          {[...pos.lots].sort((a, b) => b.buyDate.localeCompare(a.buyDate)).map((lot, i) => (
             <LotBlock key={i} lot={lot} index={i} />
           ))}
         </div>
@@ -181,7 +216,7 @@ function WatchingCard({ stock, currentPrice }: { stock: Stock; currentPrice: num
         </div>
         <span className="text-sm">
           <span className="text-xs text-text-muted">现价 </span>
-          <span className="font-mono text-text-primary">{currentPrice > 0 ? currentPrice.toFixed(2) : '-'}</span>
+          <span className="font-mono text-text-primary">{currentPrice > 0 ? currentPrice.toFixed(3) : '-'}</span>
         </span>
         <CondTag label="买入" price={cond1} dist={d1} />
         <CondTag label="卖出" price={cond2} dist={d2} />

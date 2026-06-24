@@ -18,6 +18,7 @@ export default function Trades() {
     price: '',
     quantity: '',
     notes: '',
+    dividendPrice: '',  // for split: optional per-share dividend
   })
 
   const openAdd = () => {
@@ -28,6 +29,7 @@ export default function Trades() {
       price: '',
       quantity: '',
       notes: '',
+      dividendPrice: '',
     })
     setEditingId(null)
     setModalOpen(true)
@@ -41,6 +43,7 @@ export default function Trades() {
       price: trade.price.toString(),
       quantity: trade.quantity.toString(),
       notes: trade.notes,
+      dividendPrice: '',
     })
     setEditingId(trade.id)
     setModalOpen(true)
@@ -50,9 +53,13 @@ export default function Trades() {
     const price = parseFloat(form.price)
     const quantity = parseInt(form.quantity)
     if (!form.stockId || isNaN(price)) return
-    // For adjust/dividend: quantity can be 0 (ignored), price is per-share amount
-    if (form.type === 'adjust' || form.type === 'dividend') {
+    // For adjust/split: quantity is irrelevant, price holds the value/ratio
+    if (form.type === 'adjust') {
       if (price === 0) return
+    } else if (form.type === 'dividend') {
+      if (price === 0 || isNaN(quantity) || quantity <= 0) return
+    } else if (form.type === 'split') {
+      if (price <= 0) return
     } else {
       if (price <= 0 || isNaN(quantity) || quantity <= 0) return
     }
@@ -62,7 +69,7 @@ export default function Trades() {
       type: form.type,
       tradeDate: form.tradeDate,
       price,
-      quantity: (form.type === 'adjust' || form.type === 'dividend') ? 0 : quantity,
+      quantity: (form.type === 'adjust' || form.type === 'split') ? 0 : quantity,
       notes: form.notes,
     }
 
@@ -70,6 +77,22 @@ export default function Trades() {
       await updateTrade(editingId, data)
     } else {
       await addTrade(data)
+      // For split: also create a dividend trade if dividendPrice is provided
+      if (form.type === 'split' && form.dividendPrice) {
+        const divPrice = parseFloat(form.dividendPrice)
+        if (!isNaN(divPrice) && divPrice > 0) {
+          // Need current holding qty before split for dividend calculation
+          // The split trade is already saved, so use the same date/notes
+          await addTrade({
+            stockId: form.stockId,
+            type: 'dividend',
+            tradeDate: form.tradeDate,
+            price: divPrice,
+            quantity: 0,
+            notes: form.notes || '送股同期红利',
+          })
+        }
+      }
       // Auto-set stock status to 'holding' if it's a buy
       if (form.type === 'buy') {
         const stock = stocks.find((s) => s.id === form.stockId)
@@ -111,19 +134,19 @@ export default function Trades() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">交易记录</h2>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors">
-          <Plus size={16} /> 新增交易
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg lg:text-xl font-semibold shrink-0">交易记录</h2>
+        <button onClick={openAdd} className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors whitespace-nowrap">
+          <Plus size={16} /> 新增
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-2 lg:gap-3">
         <select
           value={filterStock}
           onChange={(e) => setFilterStock(e.target.value)}
-          className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+          className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary flex-1 min-w-[120px]"
         >
           <option value="">全部股票</option>
           {stocks.map((s) => (
@@ -140,12 +163,13 @@ export default function Trades() {
           <option value="sell">卖出</option>
           <option value="adjust">成本调整</option>
           <option value="dividend">分红</option>
+          <option value="split">送股/转股</option>
         </select>
       </div>
 
       {/* Trades table */}
-      <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-bg-secondary rounded-xl border border-border overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="border-b border-border text-text-muted">
               <th className="text-left px-4 py-3 font-medium">日期</th>
@@ -173,21 +197,24 @@ export default function Trades() {
                       trade.type === 'buy' ? 'bg-profit-bg text-profit' :
                       trade.type === 'sell' ? 'bg-loss-bg text-loss' :
                       trade.type === 'dividend' ? 'bg-accent/10 text-accent' :
+                      trade.type === 'split' ? 'bg-purple-500/10 text-purple-400' :
                       'bg-warning/15 text-warning'
                     }`}>
-                      {trade.type === 'buy' ? '买入' : trade.type === 'sell' ? '卖出' : trade.type === 'dividend' ? '分红' : '调整'}
+                      {trade.type === 'buy' ? '买入' : trade.type === 'sell' ? '卖出' : trade.type === 'dividend' ? '分红' : trade.type === 'split' ? '送股/转股' : '调整'}
                     </span>
                   </td>
                   <td className="text-right px-4 py-3 font-mono">
-                    {(trade.type === 'adjust' || trade.type === 'dividend') ? (
-                      <span>{trade.type === 'dividend' ? '' : (trade.price > 0 ? '+' : '')}{trade.price.toFixed(2)}/股</span>
-                    ) : trade.price.toFixed(2)}
+                    {trade.type === 'split' ? (
+                      <span>×{trade.price}</span>
+                    ) : (trade.type === 'adjust' || trade.type === 'dividend') ? (
+                      <span>{trade.type === 'dividend' ? '' : (trade.price > 0 ? '+' : '')}{trade.price.toFixed(3)}/股</span>
+                    ) : trade.price.toFixed(3)}
                   </td>
                   <td className="text-right px-4 py-3 font-mono">
-                    {(trade.type === 'adjust' || trade.type === 'dividend') ? '-' : trade.quantity}
+                    {(trade.type === 'adjust' || trade.type === 'dividend' || trade.type === 'split') ? '-' : trade.quantity}
                   </td>
                   <td className="text-right px-4 py-3 font-mono">
-                    {(trade.type === 'adjust' || trade.type === 'dividend') ? '-' : `¥${(trade.price * trade.quantity).toLocaleString()}`}
+                    {(trade.type === 'adjust' || trade.type === 'dividend' || trade.type === 'split') ? '-' : `¥${(trade.price * trade.quantity).toLocaleString()}`}
                   </td>
                   <td className="px-4 py-3 text-text-muted text-xs truncate max-w-32">{trade.notes || '-'}</td>
                   <td className="text-center px-4 py-3">
@@ -235,6 +262,7 @@ export default function Trades() {
                 <option value="sell">卖出</option>
                 <option value="adjust">成本调整</option>
                 <option value="dividend">分红</option>
+                <option value="split">送股/转股</option>
               </select>
             </div>
             <div>
@@ -250,26 +278,28 @@ export default function Trades() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-text-muted mb-1">
-                {form.type === 'adjust' ? '调整金额（元/股）' : form.type === 'dividend' ? '每股分红（元）' : '价格'}
+                {form.type === 'adjust' ? '调整金额（元/股）' : form.type === 'dividend' ? '每股分红（元）' : form.type === 'split' ? '送股比例' : '价格'}
               </label>
               <input
                 type="number"
-                step="0.01"
+                step={form.type === 'split' ? '0.001' : '0.01'}
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
-                placeholder={form.type === 'adjust' ? '负数=降低成本' : form.type === 'dividend' ? '每股分红金额' : '成交价格'}
+                placeholder={form.type === 'adjust' ? '负数=降低成本' : form.type === 'dividend' ? '每股分红金额' : form.type === 'split' ? '如10送3请输入1.3' : '成交价格'}
                 className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-accent"
               />
             </div>
-            {(form.type === 'buy' || form.type === 'sell') && (
+            {(form.type === 'buy' || form.type === 'sell' || form.type === 'dividend') && (
               <div>
-                <label className="block text-xs text-text-muted mb-1">数量（股）</label>
+                <label className="block text-xs text-text-muted mb-1">
+                  {form.type === 'dividend' ? '持仓股数' : '数量（股）'}
+                </label>
                 <input
                   type="number"
                   step="100"
                   value={form.quantity}
                   onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-                  placeholder="成交数量"
+                  placeholder={form.type === 'dividend' ? '用于计算分红到账金额' : '成交数量'}
                   className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-accent"
                 />
               </div>
@@ -285,9 +315,40 @@ export default function Trades() {
               className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-accent"
             />
           </div>
-          {form.price && (form.type === 'adjust' || form.type === 'dividend') && (
+          {form.price && form.type === 'adjust' && (
             <div className="text-sm text-text-secondary">
-              {form.type === 'adjust' ? '成本调整' : '分红'}: <span className="font-mono text-text-primary">{form.type === 'dividend' ? '' : (parseFloat(form.price) > 0 ? '+' : '')}{parseFloat(form.price).toFixed(2)} 元/股</span>
+              成本调整: <span className="font-mono text-text-primary">{parseFloat(form.price) > 0 ? '+' : ''}{parseFloat(form.price).toFixed(3)} 元/股</span>
+            </div>
+          )}
+          {form.price && form.type === 'dividend' && (
+            <div className="text-sm text-text-secondary">
+              每股分红: <span className="font-mono text-text-primary">{parseFloat(form.price).toFixed(3)} 元/股</span>
+              {form.quantity && parseInt(form.quantity) > 0 && (
+                <span className="ml-2">到账: <span className="font-mono text-accent">¥{(parseFloat(form.price) * parseInt(form.quantity)).toLocaleString()}</span></span>
+              )}
+            </div>
+          )}
+          {form.type === 'split' && parseFloat(form.price) > 0 && (
+            <div className="text-sm text-text-secondary">
+              持仓股数将乘以 <span className="font-mono text-text-primary">×{parseFloat(form.price)}</span>，均摊成本同步更新
+            </div>
+          )}
+          {form.type === 'split' && (
+            <div>
+              <label className="block text-xs text-text-muted mb-1">每股红利（元，选填）</label>
+              <input
+                type="number"
+                step="0.001"
+                value={form.dividendPrice}
+                onChange={(e) => setForm({ ...form, dividendPrice: e.target.value })}
+                placeholder="如同期有现金红利，在此填写每股金额"
+                className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-accent"
+              />
+              {form.dividendPrice && parseFloat(form.dividendPrice) > 0 && (
+                <div className="text-xs text-accent mt-1">
+                  将同时生成一条分红记录（每股 {parseFloat(form.dividendPrice).toFixed(3)} 元）
+                </div>
+              )}
             </div>
           )}
           {form.price && form.quantity && (form.type === 'buy' || form.type === 'sell') && (

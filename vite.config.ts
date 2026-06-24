@@ -46,6 +46,17 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/eastmoney/, ''),
       },
+      '/api/tiantian': {
+        target: 'https://fundgz.1234567.com.cn',
+        changeOrigin: true,
+        rewrite: (path) => {
+          const code = path.replace(/^\/api\/tiantian\//, '')
+          return `/js/${code}`
+        },
+        headers: {
+          Referer: 'https://fund.eastmoney.com/',
+        },
+      },
     },
   },
 })

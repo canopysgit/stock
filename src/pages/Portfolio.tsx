@@ -4,16 +4,18 @@ import { calcValuationPrices, calcValuationComparisons, computeLots } from '../l
 import PnlText from '../components/common/PnlText'
 import Modal from '../components/common/Modal'
 import type { PositionSummary } from '../types'
-import { ChevronDown, ChevronRight, Eye, Wrench } from 'lucide-react'
+import { ChevronDown, ChevronRight, Eye, Wrench, Hash } from 'lucide-react'
 
 type Tab = 'holding' | 'watching' | 'all'
 
 export default function Portfolio() {
-  const { portfolioStats, stocks, trades, prices, addTrade } = useData()
+  const { portfolioStats, stocks, trades, prices, cashBalance, addTrade } = useData()
   const [tab, setTab] = useState<Tab>('holding')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [adjustModal, setAdjustModal] = useState<PositionSummary | null>(null)
   const [targetAvgCost, setTargetAvgCost] = useState('')
+  const [splitModal, setSplitModal] = useState<PositionSummary | null>(null)
+  const [targetQty, setTargetQty] = useState('')
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
@@ -25,13 +27,34 @@ export default function Portfolio() {
 
   const openAdjust = (pos: PositionSummary) => {
     setAdjustModal(pos)
-    setTargetAvgCost(pos.avgCost.toFixed(2))
+    setTargetAvgCost(pos.avgCost.toFixed(3))
+  }
+
+  const openSplit = (pos: PositionSummary) => {
+    setSplitModal(pos)
+    setTargetQty(pos.totalQty.toString())
+  }
+
+  const handleSplitSave = async () => {
+    if (!splitModal) return
+    const newQty = parseInt(targetQty)
+    if (isNaN(newQty) || newQty <= 0 || newQty === splitModal.totalQty) { setSplitModal(null); return }
+    const ratio = Math.round((newQty / splitModal.totalQty) * 10000) / 10000
+    await addTrade({
+      stockId: splitModal.stock.id,
+      type: 'split',
+      tradeDate: new Date().toISOString().split('T')[0],
+      price: ratio,
+      quantity: 0,
+      notes: `送股/转股: ${splitModal.totalQty}股 → ${newQty}股 (×${ratio})`,
+    })
+    setSplitModal(null)
   }
 
   const handleAdjustSave = async () => {
     if (!adjustModal) return
     const target = parseFloat(targetAvgCost)
-    if (isNaN(target) || target <= 0) return
+    if (isNaN(target)) return
     const delta = target - adjustModal.avgCost
     if (Math.abs(delta) < 0.001) { setAdjustModal(null); return }
 
@@ -39,9 +62,9 @@ export default function Portfolio() {
       stockId: adjustModal.stock.id,
       type: 'adjust',
       tradeDate: new Date().toISOString().split('T')[0],
-      price: Math.round(delta * 100) / 100,
+      price: Math.round(delta * 1000) / 1000,
       quantity: 0,
-      notes: `均价调整: ${adjustModal.avgCost.toFixed(2)} -> ${target.toFixed(2)}`,
+      notes: `均价调整: ${adjustModal.avgCost.toFixed(3)} -> ${target.toFixed(3)}`,
     })
     setAdjustModal(null)
   }
@@ -56,14 +79,14 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">投资组合</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg lg:text-xl font-semibold shrink-0">投资组合</h2>
         <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1">
           {(['holding', 'watching', 'all'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
                 tab === t ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'
               }`}
             >
@@ -73,10 +96,10 @@ export default function Portfolio() {
         </div>
       </div>
 
-      {/* Holdings table */}
+      {/* Holdings: Desktop table */}
       {(tab === 'holding' || tab === 'all') && displayPositions.length > 0 && (
-        <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="hidden lg:block bg-bg-secondary rounded-xl border border-border overflow-x-auto">
+          <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="border-b border-border text-text-muted">
                 <th className="text-left px-4 py-3 font-medium w-8"></th>
@@ -88,37 +111,78 @@ export default function Portfolio() {
                 <th className="text-right px-4 py-3 font-medium">市值</th>
                 <th className="text-right px-4 py-3 font-medium">浮动盈亏</th>
                 <th className="text-right px-4 py-3 font-medium">仓位</th>
+                <th className="text-right px-4 py-3 font-medium">总仓位</th>
                 <th className="text-right px-4 py-3 font-medium">加减仓</th>
               </tr>
             </thead>
             <tbody>
-              {displayPositions.map((pos) => (
-                <PositionRow key={pos.stock.id} pos={pos} expanded={expanded.has(pos.stock.id)} onToggle={() => toggle(pos.stock.id)} onAdjust={() => openAdjust(pos)} />
+              {[...displayPositions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
+                <PositionRow key={pos.stock.id} pos={pos} totalMarketValue={portfolioStats.totalMarketValue} totalCapital={portfolioStats.totalCapital} expanded={expanded.has(pos.stock.id)} onToggle={() => toggle(pos.stock.id)} onAdjust={() => openAdjust(pos)} onSplit={() => openSplit(pos)} />
               ))}
             </tbody>
             <tfoot>
+              {cashBalance > 0 && (
+                <tr className="border-t border-border/50 text-text-muted">
+                  <td className="px-4 py-3"></td>
+                  <td className="px-4 py-3 text-sm">现金</td>
+                  <td colSpan={4}></td>
+                  <td className="text-right px-4 py-3 font-mono text-sm">¥{cashBalance.toLocaleString()}</td>
+                  <td></td>
+                  <td></td>
+                  <td className="text-right px-4 py-3 font-mono text-sm">{portfolioStats.totalCapital > 0 ? ((cashBalance / portfolioStats.totalCapital) * 100).toFixed(1) : '0.0'}%</td>
+                  <td></td>
+                </tr>
+              )}
               <tr className="border-t border-border font-medium">
                 <td colSpan={5} className="px-4 py-3 text-text-muted">合计</td>
                 <td className="text-right px-4 py-3">¥{portfolioStats.totalCost.toLocaleString()}</td>
-                <td className="text-right px-4 py-3">¥{portfolioStats.totalMarketValue.toLocaleString()}</td>
+                <td className="text-right px-4 py-3">¥{portfolioStats.totalCapital.toLocaleString()}</td>
                 <td className="text-right px-4 py-3">
                   <PnlText value={portfolioStats.totalPnl} />
                   <br />
                   <PnlText value={portfolioStats.totalPnlPct} suffix="%" className="text-xs" />
                 </td>
-                <td colSpan={2}></td>
+                <td colSpan={3}></td>
               </tr>
             </tfoot>
           </table>
         </div>
       )}
 
-      {/* Watching table */}
+      {/* Holdings: Mobile cards */}
+      {(tab === 'holding' || tab === 'all') && displayPositions.length > 0 && (
+        <div className="lg:hidden space-y-3">
+          {[...displayPositions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
+            <MobilePositionCard key={pos.stock.id} pos={pos} totalMarketValue={portfolioStats.totalMarketValue} expanded={expanded.has(pos.stock.id)} onToggle={() => toggle(pos.stock.id)} onAdjust={() => openAdjust(pos)} onSplit={() => openSplit(pos)} />
+          ))}
+          {cashBalance > 0 && (
+            <div className="bg-bg-secondary rounded-xl border border-border px-4 py-3 flex items-center justify-between">
+              <span className="text-sm text-loss font-medium">现金</span>
+              <div className="text-right">
+                <span className="text-sm font-mono text-loss">¥{cashBalance.toLocaleString()}</span>
+                <span className="text-xs text-loss ml-2">{portfolioStats.totalCapital > 0 ? ((cashBalance / portfolioStats.totalCapital) * 100).toFixed(1) : '0.0'}%</span>
+              </div>
+            </div>
+          )}
+          <div className="bg-bg-secondary rounded-xl border border-border px-4 py-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-text-muted">合计</span>
+              <div className="text-right">
+                <span className="font-mono">¥{portfolioStats.totalCapital.toLocaleString()}</span>
+                <span className="ml-3"><PnlText value={portfolioStats.totalPnl} className="font-mono" /></span>
+                <span className="ml-1"><PnlText value={portfolioStats.totalPnlPct} suffix="%" className="text-xs" /></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Watching: Desktop table */}
       {(tab === 'watching' || tab === 'all') && watchingStocks.length > 0 && (
         <div className="space-y-2">
           {tab === 'all' && <h3 className="text-sm font-medium text-text-secondary mt-4">观察列表</h3>}
-          <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="hidden lg:block bg-bg-secondary rounded-xl border border-border overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-border text-text-muted">
                   <th className="text-left px-4 py-3 font-medium w-8"></th>
@@ -142,6 +206,30 @@ export default function Portfolio() {
               </tbody>
             </table>
           </div>
+          {/* Watching: Mobile cards */}
+          <div className="lg:hidden space-y-3">
+            {watchingStocks.map((stock) => {
+              const currentPrice = prices[stock.code] || 0
+              const tierLabel = stock.tier === 'core' ? '核心 (15%)' : stock.tier === 'high' ? '高 (10%)' : stock.tier === 'mid' ? '中 (6%)' : '低 (3%)'
+              return (
+                <div key={stock.id} className="bg-bg-secondary rounded-xl border border-border px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-medium text-text-primary text-sm">{stock.name}</span>
+                      <span className="text-xs text-text-muted ml-2">{stock.code}</span>
+                    </div>
+                    <span className="text-xs text-text-muted">{tierLabel}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                    <span><span className="text-text-muted">现价 </span><span className="font-mono text-text-primary">{currentPrice > 0 ? currentPrice.toFixed(3) : '-'}</span></span>
+                    {stock.conditionPrice1 && <span><span className="text-text-muted">条件1 </span><span className="font-mono">{stock.conditionPrice1}</span></span>}
+                    {stock.conditionPrice2 && <span><span className="text-text-muted">条件2 </span><span className="font-mono">{stock.conditionPrice2}</span></span>}
+                  </div>
+                  {stock.notes && <div className="text-xs text-text-muted truncate">{stock.notes}</div>}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -151,6 +239,46 @@ export default function Portfolio() {
         </div>
       )}
 
+      {/* Split / quantity modal */}
+      <Modal open={!!splitModal} onClose={() => setSplitModal(null)} title="修改持仓股数（送股/转股）">
+        {splitModal && (
+          <div className="space-y-4">
+            <div className="bg-bg-tertiary rounded-lg p-3 text-sm">
+              <div className="text-text-primary font-medium">{splitModal.stock.name} ({splitModal.stock.code})</div>
+              <div className="text-text-muted text-xs mt-1">
+                当前持仓 <span className="font-mono text-text-primary">{splitModal.totalQty}</span> 股 · 均价 <span className="font-mono">{splitModal.avgCost.toFixed(3)}</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-text-muted mb-1">送股/转股后总股数</label>
+              <input
+                type="number"
+                step="1"
+                value={targetQty}
+                onChange={(e) => setTargetQty(e.target.value)}
+                placeholder="输入新的总股数"
+                className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted/50 focus:outline-none focus:border-accent"
+              />
+              <div className="text-xs text-text-muted mt-1">例：持仓1000股，10送3后输入1300</div>
+            </div>
+            {targetQty && parseInt(targetQty) > 0 && parseInt(targetQty) !== splitModal.totalQty && (
+              <div className="text-sm text-text-secondary space-y-1">
+                <div>送股比例: <span className="font-mono text-text-primary">×{(parseInt(targetQty) / splitModal.totalQty).toFixed(4)}</span></div>
+                <div>调整后均价: <span className="font-mono text-text-primary">{(splitModal.avgCost * splitModal.totalQty / parseInt(targetQty)).toFixed(3)}</span></div>
+              </div>
+            )}
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => setSplitModal(null)} className="px-4 py-2 text-text-secondary hover:text-text-primary text-sm transition-colors">
+                取消
+              </button>
+              <button onClick={handleSplitSave} className="px-6 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors">
+                确认
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Cost adjustment modal */}
       <Modal open={!!adjustModal} onClose={() => setAdjustModal(null)} title="调整均价成本">
         {adjustModal && (
@@ -158,14 +286,14 @@ export default function Portfolio() {
             <div className="bg-bg-tertiary rounded-lg p-3 text-sm">
               <div className="text-text-primary font-medium">{adjustModal.stock.name} ({adjustModal.stock.code})</div>
               <div className="text-text-muted text-xs mt-1">
-                持仓 {adjustModal.totalQty} 股 · 当前均价 <span className="font-mono text-text-primary">{adjustModal.avgCost.toFixed(2)}</span> · 总成本 <span className="font-mono">¥{adjustModal.totalCost.toLocaleString()}</span>
+                持仓 {adjustModal.totalQty} 股 · 当前均价 <span className="font-mono text-text-primary">{adjustModal.avgCost.toFixed(3)}</span> · 总成本 <span className="font-mono">¥{adjustModal.totalCost.toLocaleString()}</span>
               </div>
             </div>
             <div>
               <label className="block text-xs text-text-muted mb-1">目标均价</label>
               <input
                 type="number"
-                step="0.01"
+                step="0.001"
                 value={targetAvgCost}
                 onChange={(e) => setTargetAvgCost(e.target.value)}
                 placeholder="输入正确的均价"
@@ -174,9 +302,9 @@ export default function Portfolio() {
             </div>
             {targetAvgCost && !isNaN(parseFloat(targetAvgCost)) && (
               <div className="text-sm text-text-secondary space-y-1">
-                <div>调整后均价: <span className="font-mono text-text-primary">{parseFloat(targetAvgCost).toFixed(2)}</span></div>
+                <div>调整后均价: <span className="font-mono text-text-primary">{parseFloat(targetAvgCost).toFixed(3)}</span></div>
                 <div>调整后总成本: <span className="font-mono text-text-primary">¥{(parseFloat(targetAvgCost) * adjustModal.totalQty).toLocaleString()}</span></div>
-                <div>每股调整: <span className="font-mono text-text-primary">{(parseFloat(targetAvgCost) - adjustModal.avgCost) > 0 ? '+' : ''}{(parseFloat(targetAvgCost) - adjustModal.avgCost).toFixed(2)}</span></div>
+                <div>每股调整: <span className="font-mono text-text-primary">{(parseFloat(targetAvgCost) - adjustModal.avgCost) > 0 ? '+' : ''}{(parseFloat(targetAvgCost) - adjustModal.avgCost).toFixed(3)}</span></div>
               </div>
             )}
             <div className="flex justify-end gap-3 pt-2">
@@ -194,10 +322,10 @@ export default function Portfolio() {
   )
 }
 
-function PositionRow({ pos, expanded, onToggle, onAdjust }: { pos: PositionSummary; expanded: boolean; onToggle: () => void; onAdjust: () => void }) {
+function PositionRow({ pos, totalMarketValue, totalCapital, expanded, onToggle, onAdjust, onSplit }: { pos: PositionSummary; totalMarketValue: number; totalCapital: number; expanded: boolean; onToggle: () => void; onAdjust: () => void; onSplit: () => void }) {
   const { prices } = useData()
   const currentPrice = prices[pos.stock.code] || pos.marketPrice
-  const tierLabel = pos.stock.tier === 'high' ? '高' : pos.stock.tier === 'mid' ? '中' : '低'
+  const tierLabel = pos.stock.tier === 'core' ? '核心' : pos.stock.tier === 'high' ? '高' : pos.stock.tier === 'mid' ? '中' : '低'
 
   return (
     <>
@@ -209,10 +337,19 @@ function PositionRow({ pos, expanded, onToggle, onAdjust }: { pos: PositionSumma
           <div className="font-medium text-text-primary">{pos.stock.name}</div>
           <div className="text-xs text-text-muted">{pos.stock.code} · {pos.stock.industry} · {tierLabel}</div>
         </td>
-        <td className="text-right px-4 py-3 font-mono">{currentPrice.toFixed(2)}</td>
-        <td className="text-right px-4 py-3 font-mono">{pos.totalQty}</td>
+        <td className="text-right px-4 py-3 font-mono">{currentPrice.toFixed(3)}</td>
+        <td className="text-right px-4 py-3 font-mono">
+          {pos.totalQty}
+          <button
+            onClick={(e) => { e.stopPropagation(); onSplit() }}
+            className="ml-1 p-0.5 text-text-muted hover:text-purple-400 inline-block align-middle"
+            title="送股/转股"
+          >
+            <Hash size={12} />
+          </button>
+        </td>
         <td className="text-right px-4 py-3">
-          <span className="font-mono">{pos.avgCost.toFixed(2)}</span>
+          <span className="font-mono">{pos.avgCost.toFixed(3)}</span>
           <button
             onClick={(e) => { e.stopPropagation(); onAdjust() }}
             className="ml-1 p-0.5 text-text-muted hover:text-accent inline-block align-middle"
@@ -224,13 +361,16 @@ function PositionRow({ pos, expanded, onToggle, onAdjust }: { pos: PositionSumma
         <td className="text-right px-4 py-3 font-mono">¥{pos.totalCost.toLocaleString()}</td>
         <td className="text-right px-4 py-3 font-mono">¥{pos.marketValue.toLocaleString()}</td>
         <td className="text-right px-4 py-3">
-          <PnlText value={pos.floatingPnl} className="font-mono" />
+          <PnlText value={pos.positionFloatingPnl} className="font-mono" />
           <br />
-          <PnlText value={pos.floatingPnlPct} suffix="%" className="text-xs" />
+          <PnlText value={pos.positionFloatingPnlPct} suffix="%" className="text-xs" />
         </td>
         <td className="text-right px-4 py-3">
-          <span className="font-mono">{pos.positionPct.toFixed(1)}%</span>
+          <span className="font-mono">{totalMarketValue > 0 ? ((pos.marketValue / totalMarketValue) * 100).toFixed(2) : '0.00'}%</span>
           <span className="text-text-muted text-xs"> / {pos.targetPct}%</span>
+        </td>
+        <td className="text-right px-4 py-3">
+          <span className="font-mono">{pos.positionPct.toFixed(2)}%</span>
         </td>
         <td className="text-right px-4 py-3">
           <PnlText value={pos.adjustPct} suffix="%" className="text-xs" />
@@ -240,7 +380,7 @@ function PositionRow({ pos, expanded, onToggle, onAdjust }: { pos: PositionSumma
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={10} className="bg-bg-tertiary/50 px-8 py-4">
+          <td colSpan={11} className="bg-bg-tertiary/50 px-8 py-4">
             <ExpandedDetail pos={pos} />
           </td>
         </tr>
@@ -250,25 +390,60 @@ function PositionRow({ pos, expanded, onToggle, onAdjust }: { pos: PositionSumma
 }
 
 function ExpandedDetail({ pos }: { pos: PositionSummary }) {
-  const { prices } = useData()
+  const { prices, trades } = useData()
   const currentPrice = prices[pos.stock.code] || pos.marketPrice
+
+  // Build unified timeline: buy lots + sell trades + dividend + split
+  const nonBuySellTrades = trades.filter((t) => t.stockId === pos.stock.id && (t.type === 'dividend' || t.type === 'split'))
+
+  type TimelineItem =
+    | { type: 'buy'; date: string; price: number; originalQty: number; remainingQty: number; floatingPnl: number; floatingPnlPct: number }
+    | { type: 'sell'; date: string; price: number; quantity: number; amount: number }
+    | { type: 'dividend'; date: string; price: number; quantity: number; amount: number }
+    | { type: 'split'; date: string; ratio: number }
+
+  const timeline: TimelineItem[] = [
+    ...pos.lots.map((lot): TimelineItem => ({
+      type: 'buy',
+      date: lot.buyDate,
+      price: lot.buyPrice,
+      originalQty: lot.originalQty,
+      remainingQty: lot.remainingQty,
+      floatingPnl: lot.floatingPnl,
+      floatingPnlPct: lot.floatingPnlPct,
+    })),
+    ...trades.filter((t) => t.stockId === pos.stock.id && t.type === 'sell').map((t): TimelineItem => ({
+      type: 'sell',
+      date: t.tradeDate,
+      price: t.price,
+      quantity: t.quantity,
+      amount: t.price * t.quantity,
+    })),
+    ...nonBuySellTrades.map((t): TimelineItem => {
+      if (t.type === 'dividend') return { type: 'dividend', date: t.tradeDate, price: t.price, quantity: t.quantity, amount: t.price * (t.quantity || 0) }
+      return { type: 'split', date: t.tradeDate, ratio: t.price }
+    }),
+  ].sort((a, b) => b.date.localeCompare(a.date))
 
   // Valuation panel
   let valuationPanel = null
   if (pos.stock.eps && pos.stock.peHigh && pos.stock.peMid && pos.stock.peLow) {
     const vp = calcValuationPrices(pos.stock.eps, pos.stock.peHigh, pos.stock.peMid, pos.stock.peLow)
     const comparisons = calcValuationComparisons(vp, currentPrice)
+    const eps = pos.stock.eps!
     valuationPanel = (
       <div className="mt-4">
-        <h4 className="text-xs font-medium text-text-muted mb-2">估值对比 (现价: {currentPrice.toFixed(2)})</h4>
+        <h4 className="text-xs font-medium text-text-muted mb-2">估值对比 (现价: {currentPrice.toFixed(3)})</h4>
         <div className="grid grid-cols-3 gap-2">
           {comparisons.map((row, i) => (
             <div key={i} className="space-y-1">
               {row.map((cell) => {
-                const pctColor = cell.diff > 0 ? 'text-loss' : cell.diff < 0 ? 'text-profit' : 'text-text-muted'
+                const pctColor = cell.diff > 0 ? 'text-profit' : cell.diff < 0 ? 'text-loss' : 'text-text-muted'
+                const impliedPe = eps > 0 ? (cell.price / eps).toFixed(1) : null
                 return (
                   <div key={cell.label} className="px-2 py-1 rounded text-xs bg-bg-tertiary/50">
                     <span className="text-text-primary">{cell.label} {cell.price}</span>
+                    {impliedPe && <span className="text-text-muted ml-1">PE{impliedPe}</span>}
                     <span className={`float-right font-mono ${pctColor}`}>{cell.diff > 0 ? '+' : ''}{cell.diff}%</span>
                   </div>
                 )
@@ -282,42 +457,70 @@ function ExpandedDetail({ pos }: { pos: PositionSummary }) {
 
   return (
     <div>
-      {/* Lot details */}
+      {/* Trade timeline */}
       <h4 className="text-xs font-medium text-text-muted mb-2">
         逐笔交易明细 {pos.lastBuyDate && <span className="ml-2">最近买入: {pos.lastBuyDate}</span>}
       </h4>
       <table className="w-full text-xs">
         <thead>
           <tr className="text-text-muted">
-            <th className="text-left py-1 pr-4">买入日期</th>
-            <th className="text-right py-1 pr-4">买入价</th>
-            <th className="text-right py-1 pr-4">原始量</th>
-            <th className="text-right py-1 pr-4">剩余量</th>
-            <th className="text-right py-1 pr-4">浮动盈亏</th>
-            <th className="text-right py-1">盈亏比例</th>
+            <th className="text-left py-1 pr-4">日期</th>
+            <th className="text-left py-1 pr-4">类型</th>
+            <th className="text-right py-1 pr-4">价格</th>
+            <th className="text-right py-1 pr-4">数量</th>
+            <th className="text-right py-1 pr-4">盈亏/金额</th>
           </tr>
         </thead>
         <tbody>
-          {pos.lots.map((lot, i) => (
+          {timeline.map((item, i) => (
             <tr key={i} className="border-t border-border/30">
-              <td className="py-1.5 pr-4">{lot.buyDate}</td>
-              <td className="text-right pr-4 font-mono">{lot.buyPrice.toFixed(2)}</td>
-              <td className="text-right pr-4 font-mono">{lot.originalQty}</td>
-              <td className="text-right pr-4 font-mono">{lot.remainingQty}</td>
-              <td className="text-right pr-4">
-                <PnlText value={lot.floatingPnl} className="font-mono" />
+              <td className="py-1.5 pr-4">{item.date}</td>
+              <td className="py-1.5 pr-4">
+                {item.type === 'buy' ? (
+                  <span className="text-profit font-medium">买入</span>
+                ) : item.type === 'sell' ? (
+                  <span className="text-loss font-medium">卖出</span>
+                ) : item.type === 'dividend' ? (
+                  <span className="text-accent font-medium">分红</span>
+                ) : item.type === 'split' ? (
+                  <span className="text-purple-400 font-medium">送股/转股</span>
+                ) : null}
               </td>
-              <td className="text-right">
-                <PnlText value={lot.floatingPnlPct} suffix="%" className="font-mono" />
+              <td className="text-right pr-4 font-mono">
+                {item.type === 'buy' ? item.price.toFixed(3)
+                  : item.type === 'sell' ? item.price.toFixed(3)
+                  : item.type === 'dividend' ? `${item.price.toFixed(3)}/股`
+                  : item.type === 'split' ? `×${item.ratio}`
+                  : null}
+              </td>
+              <td className="text-right pr-4 font-mono">
+                {item.type === 'buy'
+                  ? `${item.remainingQty}/${item.originalQty}`
+                  : item.type === 'sell' ? item.quantity
+                  : item.type === 'dividend' ? (item.quantity > 0 ? item.quantity : '-')
+                  : '-'}
+              </td>
+              <td className="text-right pr-4">
+                {item.type === 'buy' ? (
+                  <span>
+                    <PnlText value={item.floatingPnl} className="font-mono" />
+                    <span className="ml-1"><PnlText value={item.floatingPnlPct} suffix="%" className="font-mono" /></span>
+                  </span>
+                ) : item.type === 'sell' ? (
+                  <span className="font-mono text-text-primary">¥{item.amount.toLocaleString()}</span>
+                ) : item.type === 'dividend' ? (
+                  <span className="font-mono text-accent">{item.amount > 0 ? `¥${item.amount.toLocaleString()}` : '-'}</span>
+                ) : item.type === 'split' ? (
+                  <span className="text-text-muted">股数 ×{item.ratio}</span>
+                ) : null}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {pos.costAdjustment !== 0 && (
+      {pos.totalDividend > 0 && (
         <div className="mt-2 text-xs text-text-muted">
-          成本调整: <span className="font-mono text-text-primary">{pos.costAdjustment > 0 ? '+' : ''}¥{pos.costAdjustment.toLocaleString()}</span>
-          <span className="ml-2">(均价已按调整后计算，逐笔明细为原始买入价)</span>
+          累计分红: <span className="font-mono text-accent">¥{pos.totalDividend.toLocaleString()}</span>
         </div>
       )}
       {valuationPanel}
@@ -325,27 +528,110 @@ function ExpandedDetail({ pos }: { pos: PositionSummary }) {
   )
 }
 
+function MobilePositionCard({ pos, totalMarketValue, expanded, onToggle, onAdjust, onSplit }: {
+  pos: PositionSummary; totalMarketValue: number; expanded: boolean; onToggle: () => void; onAdjust: () => void; onSplit: () => void
+}) {
+  const { prices } = useData()
+  const currentPrice = prices[pos.stock.code] || pos.marketPrice
+  const tierLabel = pos.stock.tier === 'core' ? '核心' : pos.stock.tier === 'high' ? '高' : pos.stock.tier === 'mid' ? '中' : '低'
+  const posPct = totalMarketValue > 0 ? ((pos.marketValue / totalMarketValue) * 100).toFixed(2) : '0.00'
+
+  return (
+    <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
+      <div className="px-4 py-3 space-y-2 cursor-pointer" onClick={onToggle}>
+        {/* Row 1: name + pnl */}
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-text-primary text-sm">{pos.stock.name}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">{tierLabel}</span>
+            </div>
+            <span className="text-xs text-text-muted">{pos.stock.code} · {pos.stock.industry}</span>
+          </div>
+          <div className="text-right shrink-0">
+            <PnlText value={pos.positionFloatingPnl} className="font-mono text-sm" />
+            <div><PnlText value={pos.positionFloatingPnlPct} suffix="%" className="text-xs" /></div>
+          </div>
+        </div>
+        {/* Row 2: key metrics */}
+        <div className="grid grid-cols-4 gap-2 text-xs">
+          <div>
+            <div className="text-text-muted">现价</div>
+            <div className="font-mono text-text-primary">{currentPrice.toFixed(3)}</div>
+          </div>
+          <div>
+            <div className="text-text-muted">均价</div>
+            <div className="font-mono text-text-primary">{pos.avgCost.toFixed(3)}</div>
+          </div>
+          <div>
+            <div className="text-text-muted">持仓</div>
+            <div className="font-mono text-text-primary">{pos.totalQty}</div>
+          </div>
+          <div>
+            <div className="text-text-muted">市值</div>
+            <div className="font-mono text-text-primary">¥{pos.marketValue.toLocaleString()}</div>
+          </div>
+        </div>
+        {/* Row 3: position + adjust */}
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex gap-3">
+            <span><span className="text-text-muted">仓位 </span><span className="font-mono">{posPct}%</span><span className="text-text-muted"> / {pos.targetPct}%</span></span>
+            <span><span className="text-text-muted">总仓位 </span><span className="font-mono">{pos.positionPct.toFixed(2)}%</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <PnlText value={pos.adjustPct} suffix="%" className="text-xs" />
+            <span className="text-text-muted">{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
+          </div>
+        </div>
+      </div>
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-border px-4 py-3 bg-bg-tertiary/50">
+          <div className="flex justify-end gap-3 mb-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); onSplit() }}
+              className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300"
+            >
+              <Hash size={12} /> 修改股数
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onAdjust() }}
+              className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover"
+            >
+              <Wrench size={12} /> 调整均价
+            </button>
+          </div>
+          <ExpandedDetail pos={pos} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function WatchRow({ stock, currentPrice, expanded, onToggle }: {
   stock: any; currentPrice: number; expanded: boolean; onToggle: () => void
 }) {
-  const tierLabel = stock.tier === 'high' ? '高 (10%)' : stock.tier === 'mid' ? '中 (6%)' : '低 (3%)'
+  const tierLabel = stock.tier === 'core' ? '核心 (15%)' : stock.tier === 'high' ? '高 (10%)' : stock.tier === 'mid' ? '中 (6%)' : '低 (3%)'
 
   let valuationPanel = null
   if (expanded && stock.eps && stock.peHigh && stock.peMid && stock.peLow && currentPrice > 0) {
     const vp = calcValuationPrices(stock.eps, stock.peHigh, stock.peMid, stock.peLow)
     const comparisons = calcValuationComparisons(vp, currentPrice)
+    const eps = stock.eps!
     valuationPanel = (
       <tr>
         <td colSpan={8} className="bg-bg-tertiary/50 px-8 py-4">
-          <h4 className="text-xs font-medium text-text-muted mb-2">估值对比 (现价: {currentPrice.toFixed(2)})</h4>
+          <h4 className="text-xs font-medium text-text-muted mb-2">估值对比 (现价: {currentPrice.toFixed(3)})</h4>
           <div className="grid grid-cols-3 gap-2">
             {comparisons.map((row, i) => (
               <div key={i} className="space-y-1">
                 {row.map((cell) => {
-                  const pctColor = cell.diff > 0 ? 'text-loss' : cell.diff < 0 ? 'text-profit' : 'text-text-muted'
+                  const pctColor = cell.diff > 0 ? 'text-profit' : cell.diff < 0 ? 'text-loss' : 'text-text-muted'
+                  const impliedPe = eps > 0 ? (cell.price / eps).toFixed(1) : null
                   return (
                     <div key={cell.label} className="px-2 py-1 rounded text-xs bg-bg-tertiary/50">
                       <span className="text-text-primary">{cell.label} {cell.price}</span>
+                      {impliedPe && <span className="text-text-muted ml-1">PE{impliedPe}</span>}
                       <span className={`float-right font-mono ${pctColor}`}>{cell.diff > 0 ? '+' : ''}{cell.diff}%</span>
                     </div>
                   )
@@ -368,7 +654,7 @@ function WatchRow({ stock, currentPrice, expanded, onToggle }: {
           <div className="font-medium text-text-primary">{stock.name}</div>
           <div className="text-xs text-text-muted">{stock.code} · {stock.industry}</div>
         </td>
-        <td className="text-right px-4 py-3 font-mono">{currentPrice > 0 ? currentPrice.toFixed(2) : '-'}</td>
+        <td className="text-right px-4 py-3 font-mono">{currentPrice > 0 ? currentPrice.toFixed(3) : '-'}</td>
         <td className="text-right px-4 py-3 font-mono">{stock.conditionPrice1 ?? '-'}</td>
         <td className="text-right px-4 py-3 font-mono">{stock.conditionPrice2 ?? '-'}</td>
         <td className="text-right px-4 py-3">{tierLabel.split(' ')[1]}</td>

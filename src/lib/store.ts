@@ -1,11 +1,11 @@
 import { supabase } from './supabase'
-import type { Stock, Trade, Settings, StockStatus } from '../types'
+import type { Stock, Trade, Settings, StockStatus, CashFlow, OtherAsset } from '../types'
 
 // --- Demo data (shown when no Supabase credentials configured) ---
 const DEMO_STOCK: Stock = {
   id: 'demo-1', code: '000001', name: '示例股票', industry: '示例行业',
   tier: 'mid', eps: 2.5, peHigh: 15, peMid: 10, peLow: 7,
-  conditionPrice1: 20, conditionPrice2: 35, status: 'holding',
+  conditionPrice1: 20, conditionPrice2: 35, valuationUpdatedAt: '2024-01-01', status: 'holding',
   notes: '请部署到您自己的服务器并配置 Supabase 环境变量',
   createdAt: '2024-01-01', updatedAt: '2024-01-01',
 }
@@ -30,6 +30,7 @@ function dbToStock(row: any): Stock {
     peLow: row.pe_low != null ? Number(row.pe_low) : null,
     conditionPrice1: row.condition_price_1 != null ? Number(row.condition_price_1) : null,
     conditionPrice2: row.condition_price_2 != null ? Number(row.condition_price_2) : null,
+    valuationUpdatedAt: row.valuation_updated_at || null,
     status: row.status || 'watching',
     notes: row.notes || '',
     createdAt: row.created_at,
@@ -49,6 +50,7 @@ function stockToDb(data: Partial<Stock>): Record<string, any> {
   if (data.peLow !== undefined) map.pe_low = data.peLow
   if (data.conditionPrice1 !== undefined) map.condition_price_1 = data.conditionPrice1
   if (data.conditionPrice2 !== undefined) map.condition_price_2 = data.conditionPrice2
+  if (data.valuationUpdatedAt !== undefined) map.valuation_updated_at = data.valuationUpdatedAt
   if (data.status !== undefined) map.status = data.status
   if (data.notes !== undefined) map.notes = data.notes
   return map
@@ -192,4 +194,137 @@ export async function updateSettings(input: Partial<Settings>): Promise<Settings
     await supabase!.from('settings').insert({ cash_balance: input.cashBalance || 0 })
   }
   return getSettings()
+}
+
+// --- Cash Flows ---
+function dbToCashFlow(row: any): CashFlow {
+  return {
+    id: row.id,
+    type: row.type,
+    amount: Number(row.amount),
+    tradeId: row.trade_id || null,
+    stockId: row.stock_id || null,
+    flowDate: row.flow_date,
+    notes: row.notes || '',
+    createdAt: row.created_at,
+  }
+}
+
+export async function getCashFlows(): Promise<CashFlow[]> {
+  if (isDemo()) return []
+  const { data, error } = await supabase!
+    .from('cash_flows')
+    .select('*')
+    .order('flow_date', { ascending: true })
+  if (error) { console.error('getCashFlows error:', error); return [] }
+  return (data || []).map(dbToCashFlow)
+}
+
+export async function addCashFlow(input: Omit<CashFlow, 'id' | 'createdAt'>): Promise<CashFlow | null> {
+  if (isDemo()) return null
+  const row = {
+    type: input.type,
+    amount: input.amount,
+    trade_id: input.tradeId || null,
+    stock_id: input.stockId || null,
+    flow_date: input.flowDate,
+    notes: input.notes || '',
+  }
+  const { data, error } = await supabase!
+    .from('cash_flows')
+    .insert(row)
+    .select()
+    .single()
+  if (error) { console.error('addCashFlow error:', error); return null }
+  return dbToCashFlow(data)
+}
+
+export async function deleteCashFlow(id: string): Promise<void> {
+  if (isDemo()) return
+  const { error } = await supabase!.from('cash_flows').delete().eq('id', id)
+  if (error) console.error('deleteCashFlow error:', error)
+}
+
+export async function deleteCashFlowByTradeId(tradeId: string): Promise<void> {
+  if (isDemo()) return
+  const { error } = await supabase!.from('cash_flows').delete().eq('trade_id', tradeId)
+  if (error) console.error('deleteCashFlowByTradeId error:', error)
+}
+
+// --- Other Assets ---
+function dbToOtherAsset(row: any): OtherAsset {
+  return {
+    id: row.id,
+    name: row.name || '',
+    assetType: row.asset_type || 'gold',
+    code: row.code || null,
+    quantity: Number(row.quantity) || 0,
+    avgCost: Number(row.avg_cost) || 0,
+    totalCost: Number(row.total_cost) || 0,
+    currentPrice: Number(row.current_price) || 0,
+    account: row.account || '',
+    notes: row.notes || '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export async function getOtherAssets(): Promise<OtherAsset[]> {
+  if (isDemo()) return []
+  const { data, error } = await supabase!
+    .from('other_assets')
+    .select('*')
+    .order('created_at', { ascending: true })
+  if (error) { console.error('getOtherAssets error:', error); return [] }
+  return (data || []).map(dbToOtherAsset)
+}
+
+export async function addOtherAsset(input: Omit<OtherAsset, 'id' | 'createdAt' | 'updatedAt'>): Promise<OtherAsset | null> {
+  if (isDemo()) return null
+  const row = {
+    name: input.name,
+    asset_type: input.assetType,
+    code: input.code || null,
+    quantity: input.quantity,
+    avg_cost: input.avgCost,
+    total_cost: input.totalCost,
+    current_price: input.currentPrice,
+    account: input.account,
+    notes: input.notes || '',
+  }
+  const { data, error } = await supabase!
+    .from('other_assets')
+    .insert(row)
+    .select()
+    .single()
+  if (error) { console.error('addOtherAsset error:', error); return null }
+  return dbToOtherAsset(data)
+}
+
+export async function updateOtherAsset(id: string, input: Partial<OtherAsset>): Promise<OtherAsset | null> {
+  if (isDemo()) return null
+  const row: Record<string, any> = { updated_at: new Date().toISOString() }
+  if (input.name !== undefined) row.name = input.name
+  if (input.assetType !== undefined) row.asset_type = input.assetType
+  if (input.code !== undefined) row.code = input.code
+  if (input.quantity !== undefined) row.quantity = input.quantity
+  if (input.avgCost !== undefined) row.avg_cost = input.avgCost
+  if (input.totalCost !== undefined) row.total_cost = input.totalCost
+  if (input.currentPrice !== undefined) row.current_price = input.currentPrice
+  if (input.account !== undefined) row.account = input.account
+  if (input.notes !== undefined) row.notes = input.notes
+  const { data, error } = await supabase!
+    .from('other_assets')
+    .update(row)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) { console.error('updateOtherAsset error:', error); return null }
+  return dbToOtherAsset(data)
+}
+
+export async function deleteOtherAsset(id: string): Promise<void> {
+  if (isDemo()) return
+  const { error } = await supabase!.from('other_assets').delete().eq('id', id)
+  if (error) console.error('deleteOtherAsset error:', error)
 }

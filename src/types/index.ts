@@ -1,6 +1,6 @@
-export type StockTier = 'high' | 'mid' | 'low'
+export type StockTier = 'core' | 'high' | 'mid' | 'low'
 export type StockStatus = 'watching' | 'holding' | 'cleared'
-export type TradeType = 'buy' | 'sell' | 'adjust' | 'dividend'
+export type TradeType = 'buy' | 'sell' | 'adjust' | 'dividend' | 'split'
 
 export interface Stock {
   id: string
@@ -14,6 +14,7 @@ export interface Stock {
   peLow: number | null
   conditionPrice1: number | null
   conditionPrice2: number | null
+  valuationUpdatedAt: string | null
   status: StockStatus
   notes: string
   createdAt: string
@@ -35,6 +36,65 @@ export interface Settings {
   cashBalance: number
 }
 
+export type CashFlowType = 'deposit' | 'withdraw' | 'buy' | 'sell' | 'dividend'
+
+export interface CashFlow {
+  id: string
+  type: CashFlowType
+  amount: number // positive = money in, negative = money out
+  tradeId: string | null
+  stockId: string | null
+  flowDate: string
+  notes: string
+  createdAt: string
+}
+
+export type OtherAssetType = 'gold' | 'fund' | 'deposit'
+
+export interface OtherAsset {
+  id: string
+  name: string
+  assetType: OtherAssetType
+  code: string | null
+  quantity: number
+  avgCost: number
+  totalCost: number
+  currentPrice: number
+  account: string
+  notes: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GoldSummary {
+  totalGrams: number
+  avgCostPerGram: number
+  totalCost: number
+  trades: OtherAsset[]
+}
+
+export interface EtfSummary {
+  code: string
+  name: string
+  totalShares: number
+  totalCost: number
+  avgCostPerShare: number
+}
+
+export interface AssetOverviewSummary {
+  totalAssets: number
+  totalPnl: number
+  totalPnlPct: number
+  stockMarketValue: number
+  stockPnl: number
+  goldValue: number
+  goldPnl: number
+  etfValue: number
+  etfPnl: number
+  depositAmount: number
+  cashBalance: number
+}
+
 // --- Computed types ---
 
 export interface ValuationPrices {
@@ -53,6 +113,7 @@ export interface LotInfo {
   tradeId: string
   buyDate: string
   buyPrice: number
+  adjustedBuyPrice: number
   originalQty: number
   remainingQty: number
   floatingPnl: number
@@ -76,10 +137,14 @@ export interface PositionSummary {
   avgCost: number
   totalCost: number
   costAdjustment: number
+  totalDividend: number
+  realizedPnl: number
   marketPrice: number
   marketValue: number
-  floatingPnl: number
-  floatingPnlPct: number
+  floatingPnl: number       // sum of lot PnL (real per-lot returns)
+  floatingPnlPct: number    // based on raw lot cost
+  positionFloatingPnl: number // position-level: marketValue - totalCost (software number)
+  positionFloatingPnlPct: number // positionFloatingPnl / totalCost
   positionPct: number
   targetPct: number
   adjustPct: number

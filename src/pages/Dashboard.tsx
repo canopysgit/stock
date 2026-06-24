@@ -1,29 +1,94 @@
+import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import { TIER_PCT, calcValuationPrices } from '../lib/calculations'
 import PnlText from '../components/common/PnlText'
-import { TrendingUp, TrendingDown, Briefcase, AlertTriangle } from 'lucide-react'
+import { TrendingUp, TrendingDown, Briefcase, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
+
+type AlertCategory = 'all' | 'condition' | 'sell' | 'buy' | 'overweight'
+type AlertItem = { name: string; message: string; category: AlertCategory; excessPct: number; lastTrade?: { price: number; date: string; daysAgo: number }; dropPct?: number }
+
+const categoryLabels: Record<Exclude<AlertCategory, 'all'>, string> = {
+  condition: '条件单买卖点',
+  sell: '高估值卖出',
+  buy: '低估值买入',
+  overweight: '仓位超标',
+}
+
+const categoryColors: Record<Exclude<AlertCategory, 'all'>, string> = {
+  condition: 'bg-accent/10 border-accent/30 text-accent',
+  sell: 'bg-profit-bg border-profit/30 text-profit',
+  buy: 'bg-loss-bg border-loss/30 text-loss',
+  overweight: 'bg-warning-bg border-warning/30 text-warning',
+}
 
 export default function Dashboard() {
-  const { portfolioStats, stocks, prices, settings } = useData()
+  const { portfolioStats, stocks, trades, prices, cashBalance } = useData()
   const { totalMarketValue, totalCost, totalPnl, totalPnlPct, totalCapital, holdingCount, positions } = portfolioStats
+  const [alertFilter, setAlertFilter] = useState<AlertCategory>('all')
+  const [alertsCollapsed, setAlertsCollapsed] = useState(false)
 
-  // Alerts: stocks near buy targets
-  const alerts: { name: string; message: string; type: 'buy' | 'sell' | 'overweight' }[] = []
+  // Helper: find last trade and compute corporate-action-adjusted price
+  const getLastTrade = (stockId: string, type: 'buy' | 'sell') => {
+    const matched = trades
+      .filter((t) => t.stockId === stockId && t.type === type)
+      .sort((a, b) => b.tradeDate.localeCompare(a.tradeDate))
+    if (matched.length === 0) return undefined
+    const t = matched[0]
+    const daysAgo = Math.round((Date.now() - new Date(t.tradeDate).getTime()) / (1000 * 60 * 60 * 24))
+    // Adjust price for splits/dividends after this trade
+    let adjPrice = t.price
+    const subsequent = trades
+      .filter((st) => st.stockId === stockId && st.tradeDate > t.tradeDate && (st.type === 'split' || st.type === 'dividend'))
+      .sort((a, b) => a.tradeDate.localeCompare(b.tradeDate))
+    for (const st of subsequent) {
+      if (st.type === 'split' && st.price > 0) adjPrice = adjPrice / st.price
+      else if (st.type === 'dividend') adjPrice -= st.price
+    }
+    return { price: t.price, adjustedPrice: adjPrice, date: t.tradeDate, daysAgo }
+  }
+
+  const alerts: AlertItem[] = []
 
   for (const stock of stocks.filter((s) => s.status === 'watching' || s.status === 'holding')) {
     const currentPrice = prices[stock.code]
-    if (!currentPrice || !stock.eps || !stock.peHigh || !stock.peMid || !stock.peLow) continue
+    if (!currentPrice) continue
 
-    const vp = calcValuationPrices(stock.eps, stock.peHigh, stock.peMid, stock.peLow)
-    // Buy signal: price near or below 低估P3 or 中估P3
-    if (currentPrice <= vp.low.p3) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于低估低吸价 ${vp.low.p3}`, type: 'buy' })
-    } else if (currentPrice <= vp.mid.p3) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于中估低吸价 ${vp.mid.p3}`, type: 'buy' })
+    // Condition price alerts (条件单买卖点)
+    if (stock.conditionPrice1 && currentPrice <= stock.conditionPrice1) {
+      const pct = ((stock.conditionPrice1 - currentPrice) / currentPrice * 100)
+      const lt = getLastTrade(stock.id, 'buy')
+      const dropPct = lt && lt.adjustedPrice > 0 ? (lt.adjustedPrice - currentPrice) / lt.adjustedPrice * 100 : undefined
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达条件单1买入价 ${stock.conditionPrice1}，低于 ${pct.toFixed(1)}%`, category: 'condition', excessPct: pct, lastTrade: lt, dropPct })
     }
-    // Sell signal: price above 高估打折价
-    if (currentPrice >= vp.high.p2) {
-      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估打折价 ${vp.high.p2}`, type: 'sell' })
+    if (stock.conditionPrice2 && currentPrice >= stock.conditionPrice2) {
+      const pct = ((currentPrice - stock.conditionPrice2) / stock.conditionPrice2 * 100)
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达条件单2卖出价 ${stock.conditionPrice2}，超过 ${pct.toFixed(1)}%`, category: 'condition', excessPct: pct })
+    }
+
+    if (!stock.eps || !stock.peHigh || !stock.peMid || !stock.peLow) continue
+    const vp = calcValuationPrices(stock.eps, stock.peHigh, stock.peMid, stock.peLow)
+
+    // Sell signal: high valuation
+    const sellPointHint = stock.conditionPrice2 ? `，卖点 ${stock.conditionPrice2}` : '，未设置卖点'
+    if (currentPrice >= vp.high.p1) {
+      const pct = ((currentPrice - vp.high.p1) / vp.high.p1 * 100)
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估合理价 ${vp.high.p1}，超过 ${pct.toFixed(1)}%${sellPointHint}`, category: 'sell', excessPct: pct, lastTrade: getLastTrade(stock.id, 'sell') })
+    } else if (currentPrice >= vp.high.p2) {
+      const pct = ((currentPrice - vp.high.p2) / vp.high.p2 * 100)
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已达高估打折价 ${vp.high.p2}，超过 ${pct.toFixed(1)}%${sellPointHint}`, category: 'sell', excessPct: pct, lastTrade: getLastTrade(stock.id, 'sell') })
+    }
+
+    // Buy signal: low valuation
+    if (currentPrice <= vp.low.p3) {
+      const pct = ((vp.low.p3 - currentPrice) / currentPrice * 100)
+      const lt = getLastTrade(stock.id, 'buy')
+      const dropPct = lt && lt.adjustedPrice > 0 ? (lt.adjustedPrice - currentPrice) / lt.adjustedPrice * 100 : undefined
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于低估低吸价 ${vp.low.p3}，低于 ${pct.toFixed(1)}%`, category: 'buy', excessPct: pct, lastTrade: lt, dropPct })
+    } else if (currentPrice <= vp.mid.p3) {
+      const pct = ((vp.mid.p3 - currentPrice) / currentPrice * 100)
+      const lt = getLastTrade(stock.id, 'buy')
+      const dropPct = lt && lt.adjustedPrice > 0 ? (lt.adjustedPrice - currentPrice) / lt.adjustedPrice * 100 : undefined
+      alerts.push({ name: stock.name, message: `现价 ${currentPrice} 已低于中估低吸价 ${vp.mid.p3}，低于 ${pct.toFixed(1)}%`, category: 'buy', excessPct: pct, lastTrade: lt, dropPct })
     }
   }
 
@@ -31,102 +96,166 @@ export default function Dashboard() {
   for (const pos of positions) {
     const target = TIER_PCT[pos.stock.tier]
     if (pos.positionPct > target + 1) {
+      const pct = pos.positionPct - target
+      const owSellHint = pos.stock.conditionPrice2 ? `，卖点 ${pos.stock.conditionPrice2}` : '，未设置卖点'
       alerts.push({
         name: pos.stock.name,
-        message: `当前仓位 ${pos.positionPct.toFixed(1)}% 超过目标 ${target}%`,
-        type: 'overweight',
+        message: `当前仓位 ${pos.positionPct.toFixed(1)}% 超过目标 ${target}%，超出 ${pct.toFixed(1)}%${owSellHint}`,
+        category: 'overweight',
+        excessPct: pct,
+        lastTrade: getLastTrade(pos.stock.id, 'sell'),
       })
     }
   }
+
+  // Deduplicate alerts by name + message
+  const seen = new Set<string>()
+  const dedupedAlerts = alerts.filter((a) => {
+    const key = `${a.name}|${a.category}|${a.message}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  // Sort alerts: group by category order, then by excessPct desc within each group
+  const categoryOrder: Record<string, number> = { condition: 0, sell: 1, buy: 2, overweight: 3 }
+  dedupedAlerts.sort((a, b) => {
+    const catDiff = (categoryOrder[a.category] ?? 9) - (categoryOrder[b.category] ?? 9)
+    if (catDiff !== 0) return catDiff
+    return b.excessPct - a.excessPct
+  })
+
+  const filteredAlerts = alertFilter === 'all' ? dedupedAlerts : dedupedAlerts.filter((a) => a.category === alertFilter)
+
+  // Count per category
+  const counts: Record<string, number> = {}
+  for (const a of dedupedAlerts) counts[a.category] = (counts[a.category] || 0) + 1
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">仪表盘</h2>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard label="总市值" value={`¥${totalMarketValue.toLocaleString()}`} icon={<Briefcase size={20} />} />
-        <StatCard label="总成本" value={`¥${totalCost.toLocaleString()}`} sub={`现金: ¥${settings.cashBalance.toLocaleString()}`} />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <StatCard label="账户资产" value={`¥${totalCapital.toLocaleString()}`} sub={`现金: ¥${cashBalance.toLocaleString()}`} icon={<Briefcase size={20} />} />
+        <StatCard label="总市值" value={`¥${totalMarketValue.toLocaleString()}`} />
+        <StatCard label="总成本" value={`¥${totalCost.toLocaleString()}`} />
         <StatCard
           label="总浮动盈亏"
           value={<PnlText value={totalPnl} className="text-xl font-bold" />}
           sub={<PnlText value={totalPnlPct} suffix="%" className="text-sm" />}
           icon={totalPnl >= 0 ? <TrendingUp size={20} className="text-profit" /> : <TrendingDown size={20} className="text-loss" />}
         />
-        <StatCard label="持仓数量" value={`${holdingCount} 只`} sub={`总资金: ¥${totalCapital.toLocaleString()}`} />
+        <StatCard label="持仓数量" value={`${holdingCount} 只`} />
       </div>
 
       {/* Alerts */}
-      {alerts.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
-            <AlertTriangle size={16} /> 信号提醒
-          </h3>
-          <div className="space-y-2">
-            {alerts.map((alert, i) => (
-              <div
-                key={i}
-                className={`px-4 py-3 rounded-lg border text-sm ${
-                  alert.type === 'buy'
-                    ? 'bg-loss-bg border-loss/30 text-loss'
-                    : alert.type === 'sell'
-                    ? 'bg-profit-bg border-profit/30 text-profit'
-                    : 'bg-warning-bg border-warning/30 text-warning'
-                }`}
-              >
-                <span className="font-medium">{alert.name}</span> — {alert.message}
+      {dedupedAlerts.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+            <h3
+              className="text-sm font-medium text-text-secondary flex items-center gap-2 cursor-pointer select-none shrink-0"
+              onClick={() => setAlertsCollapsed((v) => !v)}
+            >
+              {alertsCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+              <AlertTriangle size={16} /> 信号提醒 ({dedupedAlerts.length})
+            </h3>
+            {!alertsCollapsed && (
+              <div className="flex gap-1 bg-bg-tertiary rounded-lg p-1 overflow-x-auto">
+                <button
+                  onClick={() => setAlertFilter('all')}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors whitespace-nowrap ${alertFilter === 'all' ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                >
+                  全部 ({dedupedAlerts.length})
+                </button>
+                {(['condition', 'sell', 'buy', 'overweight'] as const).map((cat) => (
+                  counts[cat] ? (
+                    <button
+                      key={cat}
+                      onClick={() => setAlertFilter(cat)}
+                      className={`px-2.5 py-1 text-xs rounded-md transition-colors whitespace-nowrap ${alertFilter === cat ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                    >
+                      {categoryLabels[cat]} ({counts[cat]})
+                    </button>
+                  ) : null
+                ))}
               </div>
-            ))}
+            )}
           </div>
+          {!alertsCollapsed && (
+            <div className="space-y-2">
+              {filteredAlerts.map((alert, i) => (
+                <div
+                  key={i}
+                  className={`px-4 py-3 rounded-lg border text-sm ${categoryColors[alert.category as Exclude<AlertCategory, 'all'>]}`}
+                >
+                  <span className="text-xs opacity-70 mr-2">[{categoryLabels[alert.category as Exclude<AlertCategory, 'all'>]}]</span>
+                  <span className="font-medium">{alert.name}</span> — {alert.message}
+                  {alert.lastTrade && (
+                    <span className={`ml-2 text-xs ${alert.lastTrade.daysAgo > 180 ? 'opacity-40' : 'opacity-60'}`}>
+                      | 上次{alert.category === 'buy' ? '买入' : '卖出'} {alert.lastTrade.adjustedPrice} ({alert.lastTrade.date}，{alert.lastTrade.daysAgo}天前{alert.dropPct != null && alert.dropPct > 0 ? `，较上次跌 ${alert.dropPct.toFixed(1)}%` : ''})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* Position allocation */}
-      {positions.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-text-secondary">仓位分布</h3>
-          <div className="bg-bg-secondary rounded-xl border border-border p-5">
-            <div className="space-y-3">
-              {positions.map((pos) => (
-                <div key={pos.stock.id} className="flex items-center gap-3">
-                  <span className="w-24 text-sm text-text-primary truncate">{pos.stock.name}</span>
-                  <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden relative">
-                    <div
-                      className="h-full bg-accent/60 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(pos.positionPct, 100)}%` }}
-                    />
-                    <div
-                      className="absolute top-0 h-full border-r-2 border-dashed border-warning/60"
-                      style={{ left: `${Math.min(pos.targetPct, 100)}%` }}
-                      title={`目标: ${pos.targetPct}%`}
-                    />
+      {positions.length > 0 && (() => {
+        const cashPct = totalCapital > 0 ? (cashBalance / totalCapital) * 100 : 0
+        const allPcts = [...positions.map((p) => p.positionPct), ...positions.map((p) => p.targetPct), cashPct]
+        const scaleMax = Math.max(...allPcts) * 1.15 // 15% padding so bars fill most of the width
+        const scale = (pct: number) => scaleMax > 0 ? (pct / scaleMax) * 100 : 0
+
+        return (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-text-secondary">仓位分布</h3>
+            <div className="bg-bg-secondary rounded-xl border border-border p-4 lg:p-5">
+              <div className="space-y-3">
+                {[...positions].sort((a, b) => b.marketValue - a.marketValue).map((pos) => (
+                  <div key={pos.stock.id} className="flex items-center gap-2 lg:gap-3">
+                    <span className="w-16 lg:w-24 text-xs lg:text-sm text-text-primary truncate">{pos.stock.name}</span>
+                    <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden relative">
+                      <div
+                        className="h-full bg-sky-400/50 rounded-full transition-all duration-500"
+                        style={{ width: `${scale(pos.positionPct)}%` }}
+                      />
+                      <div
+                        className="absolute top-0 h-full border-r-2 border-dashed border-warning/60"
+                        style={{ left: `${scale(pos.targetPct)}%` }}
+                        title={`目标: ${pos.targetPct}%`}
+                      />
+                    </div>
+                    <span className="w-28 text-right text-sm whitespace-nowrap">
+                      <span className="text-text-primary">{pos.positionPct.toFixed(1)}%</span>
+                      <span className="text-text-muted"> / {pos.targetPct}%</span>
+                    </span>
                   </div>
-                  <span className="w-20 text-right text-sm">
-                    <span className="text-text-primary">{pos.positionPct.toFixed(1)}%</span>
-                    <span className="text-text-muted"> / {pos.targetPct}%</span>
-                  </span>
-                </div>
-              ))}
-              {settings.cashBalance > 0 && (
-                <div className="flex items-center gap-3">
-                  <span className="w-24 text-sm text-text-muted">现金</span>
-                  <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-text-muted/30 rounded-full"
-                      style={{ width: `${(settings.cashBalance / totalCapital) * 100}%` }}
-                    />
+                ))}
+                {cashBalance > 0 && (
+                  <div className="flex items-center gap-2 lg:gap-3">
+                    <span className="w-16 lg:w-24 text-xs lg:text-sm text-loss">现金</span>
+                    <div className="flex-1 h-6 bg-bg-tertiary rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-loss/40 rounded-full"
+                        style={{ width: `${scale(cashPct)}%` }}
+                      />
+                    </div>
+                    <span className="w-28 text-right text-sm whitespace-nowrap text-loss">
+                      {cashPct.toFixed(1)}%
+                    </span>
                   </div>
-                  <span className="w-20 text-right text-sm text-text-muted">
-                    {((settings.cashBalance / totalCapital) * 100).toFixed(1)}%
-                  </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
-      {positions.length === 0 && alerts.length === 0 && (
+      {positions.length === 0 && dedupedAlerts.length === 0 && (
         <div className="text-center py-16 text-text-muted">
           <p className="text-lg">暂无数据</p>
           <p className="text-sm mt-2">前往「股票管理」添加股票，然后在「交易记录」中录入交易</p>
@@ -143,11 +272,11 @@ function StatCard({ label, value, sub, icon }: {
   icon?: React.ReactNode
 }) {
   return (
-    <div className="bg-bg-secondary rounded-xl border border-border p-5">
+    <div className="bg-bg-secondary rounded-xl border border-border p-3 lg:p-5">
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-text-muted mb-1">{label}</p>
-          <div className="text-xl font-bold text-text-primary">{value}</div>
+        <div className="min-w-0">
+          <p className="text-xs lg:text-sm text-text-muted mb-1">{label}</p>
+          <div className="text-base lg:text-xl font-bold text-text-primary truncate">{value}</div>
           {sub && <div className="mt-1 text-sm text-text-muted">{sub}</div>}
         </div>
         {icon && <div className="text-text-muted">{icon}</div>}

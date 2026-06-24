@@ -15,9 +15,9 @@ export interface QuoteResult {
 
 function codeToSinaSymbol(code: string): string {
   const c = code.replace(/\D/g, '')
-  if (c.startsWith('6') || c.startsWith('9')) return `sh${c}`
+  if (c.startsWith('6') || c.startsWith('9') || c.startsWith('5')) return `sh${c}`
   if (c.startsWith('0') || c.startsWith('3') || c.startsWith('2')) return `sz${c}`
-  if (c.startsWith('4') || c.startsWith('8')) return `bj${c}` // Beijing exchange
+  if (c.startsWith('4') || c.startsWith('8')) return `bj${c}`
   return `sh${c}`
 }
 
@@ -43,6 +43,7 @@ export async function fetchQuotes(codes: string[]): Promise<Record<string, numbe
       const parts = match[2].split(',')
 
       if (parts.length >= 4) {
+        // parts[0]=name, parts[1]=open, parts[2]=prev_close, parts[3]=current_price
         const price = parseFloat(parts[3])
         if (!isNaN(price) && price > 0) {
           result[rawCode] = price
@@ -59,6 +60,77 @@ export async function fetchQuotes(codes: string[]): Promise<Record<string, numbe
 export async function fetchSingleQuote(code: string): Promise<number | null> {
   const result = await fetchQuotes([code])
   return result[code.replace(/\D/g, '')] ?? null
+}
+
+// --- Gold price (XAU/USD → CNY/gram) ---
+
+const TROY_OZ_TO_GRAM = 31.1035
+
+export async function fetchGoldPriceCNY(): Promise<number | null> {
+  try {
+    const resp = await fetch(`/api/sina/list=hf_XAU,fx_susdcny`, {
+      headers: { Referer: 'https://finance.sina.com.cn' },
+    })
+    const text = await resp.text()
+
+    let xauUsd = 0
+    let usdCny = 0
+
+    for (const line of text.split('\n').filter(Boolean)) {
+      const match = line.match(/hq_str_(\w+)="(.+)"/)
+      if (!match) continue
+      const [, key, raw] = match
+      const parts = raw.split(',')
+      if (key === 'hf_XAU') {
+        xauUsd = parseFloat(parts[0]) || 0
+      } else if (key === 'fx_susdcny') {
+        usdCny = parseFloat(parts[1]) || 0
+      }
+    }
+
+    if (xauUsd > 0 && usdCny > 0) {
+      return Math.round((xauUsd * usdCny / TROY_OZ_TO_GRAM) * 100) / 100
+    }
+  } catch (e) {
+    console.warn('fetchGoldPriceCNY error:', e)
+  }
+  return null
+}
+
+// --- Tiantian Fund NAV ---
+
+export interface TiantianNavResult {
+  code: string
+  name: string
+  nav: number
+  navDate: string
+  estimatedNav: number | null
+}
+
+export async function fetchTiantianNav(fundCode: string): Promise<TiantianNavResult | null> {
+  try {
+    const resp = await fetch(`/api/tiantian/${fundCode}`)
+    if (!resp.ok) return null
+    const text = await resp.text()
+    // Vite dev proxy passes through raw JSONP; Vercel function returns clean JSON
+    let data: any
+    if (text.startsWith('jsonpgz(')) {
+      const match = text.match(/jsonpgz\((.+)\)/)
+      if (!match) return null
+      data = JSON.parse(match[1])
+    } else {
+      data = JSON.parse(text)
+    }
+    return {
+      code: data.code || data.fundcode || fundCode,
+      name: data.name || '',
+      nav: typeof data.nav === 'number' ? data.nav : parseFloat(data.dwjz) || 0,
+      navDate: data.navDate || data.jzrq || '',
+      estimatedNav: data.estimatedNav ?? (data.gsz ? parseFloat(data.gsz) : null),
+    }
+  } catch {
+    return null
+  }
 }
 
 // --- Stock info lookup (name + industry) ---

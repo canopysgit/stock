@@ -22,7 +22,7 @@ const statusLabels: Record<StockStatus, string> = {
 }
 
 export default function Stocks() {
-  const { stocks, prices, peData, addStock, updateStock, deleteStock } = useData()
+  const { stocks, prices, peData, portfolioStats, addStock, updateStock, deleteStock } = useData()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -109,27 +109,42 @@ export default function Stocks() {
     }
   }
 
-  const filtered = stocks.filter((s) => {
-    if (filterStatus && s.status !== filterStatus) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.industry.toLowerCase().includes(q)
-    }
-    return true
-  })
+  // Build position percentage map for sorting
+  const posPctMap: Record<string, number> = {}
+  for (const pos of portfolioStats.positions) {
+    posPctMap[pos.stock.id] = pos.positionPct
+  }
+
+  const filtered = stocks
+    .filter((s) => {
+      if (filterStatus && s.status !== filterStatus) return false
+      if (search) {
+        const q = search.toLowerCase()
+        return s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.industry.toLowerCase().includes(q)
+      }
+      return true
+    })
+    .sort((a, b) => {
+      // Group: holding first, then watching, then cleared
+      const order: Record<StockStatus, number> = { holding: 0, watching: 1, cleared: 2 }
+      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status]
+      // Within holding: sort by position pct descending
+      if (a.status === 'holding') return (posPctMap[b.id] || 0) - (posPctMap[a.id] || 0)
+      return 0
+    })
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">股票管理</h2>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors">
-          <Plus size={16} /> 添加股票
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg lg:text-xl font-semibold shrink-0">股票管理</h2>
+        <button onClick={openAdd} className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm transition-colors whitespace-nowrap">
+          <Plus size={16} /> 添加
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-wrap gap-2 lg:gap-3">
+        <div className="relative flex-1 min-w-[160px] max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             type="text"
@@ -157,20 +172,51 @@ export default function Stocks() {
           <p className="text-lg">{stocks.length === 0 ? '暂无股票' : '没有匹配的股票'}</p>
           {stocks.length === 0 && <p className="text-sm mt-2">点击右上角「添加股票」开始</p>}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((stock) => (
-            <StockCard
-              key={stock.id}
-              stock={stock}
-              currentPrice={prices[stock.code] || 0}
-              currentPe={peData[stock.code] || 0}
-              onEdit={() => openEdit(stock)}
-              onDelete={() => handleDelete(stock.id)}
-            />
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        const holdingStocks = filtered.filter((s) => s.status === 'holding')
+        const watchingStocks = filtered.filter((s) => s.status === 'watching')
+        const clearedStocks = filtered.filter((s) => s.status === 'cleared')
+        return (
+          <div className="space-y-4">
+            {holdingStocks.length > 0 && (
+              <>
+                {(!filterStatus || filterStatus !== 'holding') && (watchingStocks.length > 0 || clearedStocks.length > 0) && (
+                  <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider">持仓中 ({holdingStocks.length})</h3>
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {holdingStocks.map((stock) => (
+                    <StockCard key={stock.id} stock={stock} positionPct={posPctMap[stock.id]} currentPrice={prices[stock.code] || 0} currentPe={peData[stock.code] || 0} onEdit={() => openEdit(stock)} onDelete={() => handleDelete(stock.id)} />
+                  ))}
+                </div>
+              </>
+            )}
+            {watchingStocks.length > 0 && (
+              <>
+                {(!filterStatus || filterStatus !== 'watching') && (holdingStocks.length > 0 || clearedStocks.length > 0) && (
+                  <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mt-2">观察中 ({watchingStocks.length})</h3>
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {watchingStocks.map((stock) => (
+                    <StockCard key={stock.id} stock={stock} currentPrice={prices[stock.code] || 0} currentPe={peData[stock.code] || 0} onEdit={() => openEdit(stock)} onDelete={() => handleDelete(stock.id)} />
+                  ))}
+                </div>
+              </>
+            )}
+            {clearedStocks.length > 0 && (
+              <>
+                {(!filterStatus || filterStatus !== 'cleared') && (holdingStocks.length > 0 || watchingStocks.length > 0) && (
+                  <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mt-2">已清仓 ({clearedStocks.length})</h3>
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {clearedStocks.map((stock) => (
+                    <StockCard key={stock.id} stock={stock} currentPrice={prices[stock.code] || 0} currentPe={peData[stock.code] || 0} onEdit={() => openEdit(stock)} onDelete={() => handleDelete(stock.id)} />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Add/Edit modal */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? '编辑股票' : '添加股票'}>
@@ -226,6 +272,7 @@ export default function Stocks() {
                 onChange={(e) => setForm({ ...form, tier: e.target.value as StockTier })}
                 className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
               >
+                <option value="core">核心 (15%)</option>
                 <option value="high">高 (10%)</option>
                 <option value="mid">中 (6%)</option>
                 <option value="low">低 (3%)</option>
@@ -268,14 +315,15 @@ export default function Stocks() {
   )
 }
 
-function StockCard({ stock, currentPrice, currentPe, onEdit, onDelete }: {
+function StockCard({ stock, positionPct, currentPrice, currentPe, onEdit, onDelete }: {
   stock: Stock
+  positionPct?: number
   currentPrice: number
   currentPe: number
   onEdit: () => void
   onDelete: () => void
 }) {
-  const tierLabel = stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'
+  const tierLabel = stock.tier === 'core' ? '核心' : stock.tier === 'high' ? '高' : stock.tier === 'mid' ? '中' : '低'
   const statusColor = stock.status === 'holding'
     ? 'bg-accent/15 text-accent-hover'
     : stock.status === 'watching'
@@ -309,6 +357,12 @@ function StockCard({ stock, currentPrice, currentPe, onEdit, onDelete }: {
 
       {/* Info row */}
       <div className="flex items-center gap-4 text-sm">
+        {positionPct != null && (
+          <div>
+            <span className="text-text-muted text-xs">仓位</span>
+            <span className="ml-1 font-mono text-text-primary">{positionPct.toFixed(1)}%</span>
+          </div>
+        )}
         <div>
           <span className="text-text-muted text-xs">评级</span>
           <span className="ml-1 text-text-primary">{tierLabel} ({TIER_PCT[stock.tier]}%)</span>
@@ -316,7 +370,7 @@ function StockCard({ stock, currentPrice, currentPe, onEdit, onDelete }: {
         {currentPrice > 0 && (
           <div>
             <span className="text-text-muted text-xs">现价</span>
-            <span className="ml-1 font-mono text-text-primary">{currentPrice.toFixed(2)}</span>
+            <span className="ml-1 font-mono text-text-primary">{currentPrice.toFixed(3)}</span>
           </div>
         )}
         {currentPe > 0 && (
@@ -334,15 +388,15 @@ function StockCard({ stock, currentPrice, currentPe, onEdit, onDelete }: {
           <div className="flex items-center gap-3 text-xs">
             <div>
               <span className="text-text-muted">低估值</span>
-              <span className="ml-1 font-mono text-loss">{vp.low.p1.toFixed(2)}</span>
+              <span className="ml-1 font-mono text-loss">{vp.low.p1.toFixed(3)}</span>
             </div>
             <div>
               <span className="text-text-muted">中估值</span>
-              <span className="ml-1 font-mono text-warning">{vp.mid.p1.toFixed(2)}</span>
+              <span className="ml-1 font-mono text-warning">{vp.mid.p1.toFixed(3)}</span>
             </div>
             <div>
               <span className="text-text-muted">高估值</span>
-              <span className="ml-1 font-mono text-profit">{vp.high.p1.toFixed(2)}</span>
+              <span className="ml-1 font-mono text-profit">{vp.high.p1.toFixed(3)}</span>
             </div>
           </div>
         )
